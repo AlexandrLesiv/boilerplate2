@@ -1,16 +1,15 @@
 import type { JSX, ParentProps } from 'solid-js';
-import { Suspense, untrack } from 'solid-js';
+import { untrack } from 'solid-js';
 
 import { MetaProvider } from '@solidjs/meta';
-import { A, MemoryRouter, Route, useParams } from '@solidjs/router';
+import { MemoryRouter, Route } from '@solidjs/router';
 
 import { generalTheme } from '../src/assets/styles/themes.css';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
 import type { Locale } from '../src/common/libs/i18n';
 import { LoggerContext, createLogger } from '../src/common/libs/logger';
 import { RootStoreContext, createRootStore } from '../src/common/libs/stores/root';
-import { LocaleSwitcher } from '../src/views/components/LocaleSwitcher/LocaleSwitcher';
-import { header, headerLeft, main, nav } from '../src/views/layouts/styles.css';
+import RootLayout from '../src/views/layouts/RootLayout';
 
 type ProviderOptions = {
   user?: { id: string; email: string } | null;
@@ -32,11 +31,11 @@ const solidDecorator = (
   return decorator;
 };
 
+// Static providers that don't need router context.
 const AppProviders = (props: { children: JSX.Element; user?: { id: string; email: string } | null }) => {
   const store = createRootStore();
   const initialUser = untrack(() => props.user);
   if (initialUser) store.setUser(initialUser);
-  const i18n = createI18nStore(() => DEFAULT_LOCALE);
   const logger = createLogger();
 
   return (
@@ -44,7 +43,7 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
       <div class={generalTheme}>
         <LoggerContext.Provider value={logger}>
           <RootStoreContext.Provider value={store}>
-            <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>
+            {props.children}
           </RootStoreContext.Provider>
         </LoggerContext.Provider>
       </div>
@@ -52,50 +51,30 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
   );
 };
 
-/** Lightweight layout for Storybook — visual chrome only, no useCurrentMatches(). */
-const StoryPageLayout = (props: ParentProps) => {
-  const params = useParams<{ locale?: string }>();
-  const locale = () => (params.locale as Locale | undefined) ?? DEFAULT_LOCALE;
-  const i18n = createI18nStore(locale);
-  const pfx = () => (params.locale ? `/${params.locale}` : '');
-
-  return (
-    <I18nContext.Provider value={i18n}>
-      <div>
-        <header class={header}>
-          <div class={headerLeft}>
-            <strong>SolidJS App</strong>
-            <nav class={nav}>
-              <A href={pfx() || '/'} end>
-                {i18n.t().nav.home}
-              </A>
-              <A href={`${pfx()}/login`}>{i18n.t().nav.login}</A>
-            </nav>
-          </div>
-          <LocaleSwitcher />
-        </header>
-        <main class={main}>
-          <Suspense>{props.children}</Suspense>
-        </main>
-      </div>
-    </I18nContext.Provider>
-  );
+// createI18nStore uses createAsync which requires router context — must render inside a Route.
+const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
+  const i18n = createI18nStore(props.locale ?? (() => DEFAULT_LOCALE));
+  return <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>;
 };
 
 /** For component-level stories: contexts + router, no layout chrome. */
 export const withAppProviders = solidDecorator((Story, { user = null }) => (
   <AppProviders user={user}>
     <MemoryRouter>
-      <Route path="/*" component={() => <Story />} />
+      <Route path="/*" component={() => (
+        <WithI18n>
+          <Story />
+        </WithI18n>
+      )} />
     </MemoryRouter>
   </AppProviders>
 ));
 
-/** For page-level stories: full layout chrome with header, nav, and locale switcher. */
+/** For page-level stories: full app layout (RootLayout) so nav stays in sync with the real app. */
 export const withPageLayout = solidDecorator((Story, { user = null }) => (
   <AppProviders user={user}>
     <MemoryRouter>
-      <Route path="/:locale?" component={StoryPageLayout} matchFilters={{ locale: [...SUPPORTED_LOCALES] }}>
+      <Route path="/:locale?" component={RootLayout} matchFilters={{ locale: [...SUPPORTED_LOCALES] }}>
         <Route path="/*" component={() => <Story />} />
       </Route>
     </MemoryRouter>

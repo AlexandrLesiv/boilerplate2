@@ -1,11 +1,9 @@
-import { topStoriesRoute } from '@repo/shared';
-
-import { createApiCall } from '../../../common/libs/api';
 import { localeFromParams } from '../../../common/libs/i18n';
 import { defineJsonLd, defineRoute } from '../../../common/libs/router';
+import { getTopStories } from './api';
 import NewsPage from './NewsPage';
 
-export const getTopStories = createApiCall(topStoriesRoute);
+export { getTopStories } from './api';
 
 export const newsRoute = defineRoute({
   path: '/news',

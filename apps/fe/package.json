@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src",
     "lint:fix": "oxlint src --fix",
-    "lint:staged": "lint-staged",
     "format": "oxfmt src",
     "format:check": "oxfmt --check src",
     "lint:versions": "node -e \"const p=require('./package.json'),all={...p.dependencies,...p.devDependencies},bad=Object.entries(all).filter(([,v])=>/^[\\^~]/.test(v));if(bad.length){console.error('Non-exact versions:',bad.map(([k,v])=>k+'@'+v).join(', '));process.exit(1)}\"",
@@ -18,8 +17,7 @@
     "storybook": "storybook dev",
     "build-storybook": "storybook build",
     "bundlewatch": "bundlewatch --config .bundlewatchrc",
-    "deps:upgrade": "ncu -u && pnpm install",
-    "prepare": "husky"
+    "deps:upgrade": "ncu -u && pnpm install"
   },
   "dependencies": {
     "@repo/shared": "workspace:*",
@@ -45,9 +43,7 @@
     "@vitest/coverage-v8": "5.0.2",
     "bundlewatch": "0.4.2",
     "eslint-plugin-solid": "0.18.0",
-    "husky": "9.1.7",
     "idb": "8.0.3",
-    "lint-staged": "17.6.0",
     "msw": "2.15.0",
     "msw-storybook-addon": "3.0.3",
     "npm-check-updates": "23.1.0",
@@ -56,6 +52,7 @@
     "picocolors": "1.1.1",
     "playwright": "1.63.0",
     "rolldown": "1.2.11",
+    "solid-devtools": "0.34.5",
     "rollup-plugin-visualizer": "7.1.1",
     "storybook": "10.6.0",
     "storybook-solidjs-vite": "10.7.2",

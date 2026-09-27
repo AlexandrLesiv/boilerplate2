@@ -9,6 +9,8 @@ import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vite';
 import oxlint from 'vite-plugin-oxlint';
 
+import devtools from 'solid-devtools/vite';
+
 import { serviceWorkerPlugin } from './vite-plugins/service-worker.ts';
 import { stripTypeboxPlugin } from './vite-plugins/strip-typebox.ts';
 import { versionedClientOutputPlugin } from './vite-plugins/versioned-client-output.ts';
@@ -31,6 +33,7 @@ export default defineConfig(async () => {
   return {
   plugins: [
     vanillaExtractPlugin(),
+    devtools({ autoname: true }),
     ...solidStart({ ssr: true, middleware: './src/middleware.ts' }),
     oxlint(),
     serviceWorkerPlugin(),

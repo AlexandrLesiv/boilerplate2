@@ -5,7 +5,7 @@ import { createAsync } from '@solidjs/router';
 
 import { format, useI18n } from '../../../common/libs/i18n';
 import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
-import { getTopStories } from './route';
+import { getTopStories } from './api';
 
 const NewsPage: Component = () => {
   const { locale, t } = useI18n();

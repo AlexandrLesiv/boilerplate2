@@ -37,7 +37,8 @@ pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 
 - **Arrow functions everywhere** — use `const fn = () => {}` for all functions. Named `function` declarations are not used in this codebase; oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
 - **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm --filter fe lint:versions` to check.
-- **`createApiCall(route)`** for all frontend API calls — takes a `SharedApiRoute` from `@repo/shared`, returns a fully typed async function. Never hand-write fetch URLs in components.
+- **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. Locale is passed as the first argument by the caller.
+- **`createMutation(route)`** for POST/PUT/DELETE — call inside a component (it's a hook that reads locale from `useI18n`), returns a typed async function for use in event handlers.
 - **TypeBox is stripped from the client bundle** — `vite-plugins/strip-typebox.ts` replaces `@sinclair/typebox` with a no-op Proxy in the `client` Vite environment. Do not rely on TypeBox runtime behavior in browser code.
 - **Response envelope** from `@repo/shared`: `{ data: T[], meta: { total, isOk } }` for lists, `{ data: T }` for singles.
 - **Styles**: Vanilla Extract `.css.ts` files only. No inline styles, no CSS modules, no Tailwind.
