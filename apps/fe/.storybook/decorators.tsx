@@ -53,7 +53,7 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
 
 // createI18nStore uses createAsync which requires router context — must render inside a Route.
 const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
-  const i18n = createI18nStore(props.locale ?? (() => DEFAULT_LOCALE));
+  const i18n = createI18nStore(() => props.locale?.() ?? DEFAULT_LOCALE);
   return <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>;
 };
 

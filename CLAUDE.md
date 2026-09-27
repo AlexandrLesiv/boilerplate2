@@ -37,7 +37,7 @@ pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 
 - **Arrow functions everywhere** — use `const fn = () => {}` for all functions. Named `function` declarations are not used in this codebase; oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
 - **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm --filter fe lint:versions` to check.
-- **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. Locale is passed as the first argument by the caller.
+- **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. No locale — GET routes are locale-agnostic.
 - **`createMutation(route)`** for POST/PUT/DELETE — call inside a component (it's a hook that reads locale from `useI18n`), returns a typed async function for use in event handlers.
 - **TypeBox is stripped from the client bundle** — `vite-plugins/strip-typebox.ts` replaces `@sinclair/typebox` with a no-op Proxy in the `client` Vite environment. Do not rely on TypeBox runtime behavior in browser code.
 - **Response envelope** from `@repo/shared`: `{ data: T[], meta: { total, isOk } }` for lists, `{ data: T }` for singles.
@@ -124,6 +124,44 @@ export const exampleRoute = defineRoute({
   },
 });
 ```
+
+## Route structure
+
+Routes are defined as siblings under the locale layout route (`/:locale?`), not as nested children. **Do not add `children` to a route that has its own `component`** — in SolidJS Router v1, doing so turns the component into a layout that requires `<Outlet>`, and navigating to the parent path exact will not render the component content.
+
+Use full paths for "sub-pages":
+```ts
+// ✓ siblings with full paths
+children: [rootRoute, newsRoute, articlePageRoute, loginRoute]
+// where newsRoute.path = '/news' and articlePageRoute.path = '/news/:id'
+
+// ✗ nested children — breaks navigation to /news
+newsRoute = defineRoute({ path: '/news', component: NewsPage, children: [articleRoute] })
+```
+
+## IndexedDB stores
+
+IDB stores are created via `createIdbStore` in `apps/fe/src/common/libs/idb/index.ts`. Every store has a version number. When you change the schema, you **must** bump the version and write a migration — otherwise the upgrade transaction is aborted and you get an unhandled rejection.
+
+**Rules:**
+- Bump `IDB_STORE_VERSION` whenever you add/remove/rename an object store, add/remove an index, or change the type of an indexed field.
+- The `upgrade` callback receives `(db, oldVersion)`. Use `oldVersion` to apply only the migrations needed:
+  ```ts
+  const getDb = createIdbStore<MyDB>('my-store', VERSION, (db, oldVersion) => {
+    if (oldVersion < 1) {
+      db.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+    }
+    if (oldVersion < 2) {
+      // drop and recreate when indexed field type changes
+      db.deleteObjectStore('items');
+      const store = db.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('timestamp', 'timestamp');
+    }
+  });
+  ```
+- Never call `createObjectStore` unconditionally — it throws if the store already exists, aborting the transaction.
+- Deleting and recreating a store is the right migration when an indexed field's type changes (e.g. `number` → `string`), because IDB index comparisons are type-sensitive.
+- IDB timestamps are stored as ISO 8601 strings (`new Date().toISOString()`), not Unix timestamps. ISO strings sort correctly as strings so IDB range queries still work.
 
 ## Adding a new API endpoint
 

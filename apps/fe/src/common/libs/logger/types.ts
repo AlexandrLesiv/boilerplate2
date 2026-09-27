@@ -19,7 +19,7 @@ export interface LogEntry {
   category: LogCategory;
   message: string;
   data?: Record<string, unknown>;
-  timestamp: number;
+  timestamp: string;
   sessionId: string;
   url: string;
 }

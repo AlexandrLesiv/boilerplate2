@@ -11,4 +11,4 @@ export {
 } from './common/route.js';
 export { StoryEntity, type Story } from './entities/story.js';
 export { loginRoute } from './routes/auth.js';
-export { topStoriesRoute } from './routes/hackernews.js';
+export { topStoriesRoute, articleRoute } from './routes/hackernews.js';

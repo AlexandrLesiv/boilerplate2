@@ -3,13 +3,15 @@ import { ErrorBoundary, For, Suspense } from 'solid-js';
 
 import { createAsync } from '@solidjs/router';
 
+import { A } from '@solidjs/router';
+
 import { format, useI18n } from '../../../common/libs/i18n';
 import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
 import { getTopStories } from './api';
 
 const NewsPage: Component = () => {
-  const { locale, t } = useI18n();
-  const response = createAsync(() => getTopStories(locale()));
+  const { t } = useI18n();
+  const response = createAsync(() => getTopStories());
   const stories = () => response()?.data ?? [];
 
   const hnItemUrl = (id: number) => `https://news.ycombinator.com/item?id=${id}`;
@@ -25,14 +27,9 @@ const NewsPage: Component = () => {
                 <li class={item}>
                   <span class={rank}>{i() + 1}.</span>
                   <div class={body}>
-                    <a
-                      class={titleLink}
-                      href={story.url ?? hnItemUrl(story.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <A class={titleLink} href={String(story.id)}>
                       {story.title}
-                    </a>
+                    </A>
                     <div class={meta}>
                       <span>{format(t().pages.news.score, { n: story.score })}</span>
                       <span>{format(t().pages.news.by, { user: story.by })}</span>

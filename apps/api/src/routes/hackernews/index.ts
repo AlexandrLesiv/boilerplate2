@@ -1,5 +1,5 @@
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import { okList, topStoriesRoute, type Story } from '@repo/shared';
+import { articleRoute, ok, okList, topStoriesRoute, type Story } from '@repo/shared';
 
 const HN_BASE = 'https://hacker-news.firebaseio.com/v0';
 
@@ -20,6 +20,18 @@ export const hackerNewsRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const items = await Promise.all(top.map((id) => hnGet<Story & { type: string }>(`/item/${id}.json`)));
       const stories = items.filter((s) => s.type === 'story');
       return okList(stories, stories.length);
+    },
+  );
+
+  fastify.get(
+    articleRoute.url,
+    { schema: articleRoute.schema },
+    async (request, reply) => {
+      const item = await hnGet<(Story & { type: string }) | null>(`/item/${request.params.id}.json`);
+      if (!item || item.type !== 'story') {
+        return reply.code(404).send({ message: 'Article not found' });
+      }
+      return ok(item);
     },
   );
 };

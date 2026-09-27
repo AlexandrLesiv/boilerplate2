@@ -39,6 +39,13 @@ const RootLayout: Component<ParentProps> = (props) => {
   return (
     <I18nContext.Provider value={i18n}>
       <Link rel="manifest" href="/manifest.json" />
+      <Link rel="icon" href="/assets/favicon/favicon.ico" sizes="any" />
+      <Link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
+      <Link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png" />
+      <Link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png" />
+      <Link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon-180x180.png" />
+      <Link rel="apple-touch-icon" href="/assets/favicon/apple-touch-icon.png" />
+      <Meta name="msapplication-config" content="/assets/favicon/browserconfig.xml" />
       <Meta name="theme-color" content="#3b82f6" />
       <For each={SUPPORTED_LOCALES}>
         {(target) => <Link rel="alternate" hreflang={target} href={alternateHref(target)} />}

@@ -18,6 +18,11 @@
       "welcomeAnon": "Welcome! Please log in.",
       "welcomeUser": "Welcome, {email}!"
     },
+    "article": {
+      "notFound": "Article not found",
+      "notFoundDescription": "The article you're looking for doesn't exist or has been removed.",
+      "backToNews": "Back to news"
+    },
     "login": {
       "title": "Login",
       "emailLabel": "Email",

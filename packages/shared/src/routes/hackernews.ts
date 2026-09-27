@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 
-import { defineListResponse } from '../common/response.js';
+import { defineListResponse, defineResponse } from '../common/response.js';
 import { defineSharedApiRoute } from '../common/route.js';
 import { StoryEntity } from '../entities/story.js';
 
@@ -15,6 +15,22 @@ export const topStoriesRoute = defineSharedApiRoute({
     }),
     response: {
       200: defineListResponse(StoryEntity),
+    },
+  },
+});
+
+export const articleRoute = defineSharedApiRoute({
+  url: '/hackernews/item/:id',
+  method: 'GET',
+  schema: {
+    tags: ['hackernews'],
+    summary: 'Get a single Hacker News story by ID',
+    params: Type.Object({
+      id: Type.Number(),
+    }),
+    response: {
+      200: defineResponse(StoryEntity),
+      404: Type.Object({ message: Type.String() }),
     },
   },
 });

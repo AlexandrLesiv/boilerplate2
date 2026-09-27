@@ -4,6 +4,13 @@ import { type Static, type TSchema } from '@sinclair/typebox';
 import { apiBaseUrl } from '../../constants/environment';
 import { logger } from '../logger';
 
+export class ApiError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export type CallOptions<S extends RouteSchema> =
   (S['querystring'] extends TSchema ? { querystring?: Static<S['querystring']> } : { querystring?: never }) &
   (S['body'] extends TSchema ? { body: Static<S['body']> } : { body?: never }) &
@@ -15,7 +22,7 @@ export type RouteResponse<S extends RouteSchema> = S['response'] extends { 200: 
   ? Static<S['response'][200]>
   : unknown;
 
-const buildRouteUrl = (
+export const buildRouteUrl = (
   url: string,
   params?: Record<string, unknown>,
   querystring?: Record<string, unknown>,
@@ -57,7 +64,7 @@ export const apiFetch = async <S extends RouteSchema>(
   const durationMs = performance.now() - t0;
   if (!response.ok) {
     logger.apiError(route.method, url, response.status, response.statusText);
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    throw new ApiError(response.status, `Request failed: ${response.status} ${response.statusText}`);
   }
   logger.perf(`api.${route.method.toLowerCase()}.${url}`, durationMs);
   return response.json() as Promise<RouteResponse<S>>;

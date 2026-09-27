@@ -7,7 +7,7 @@ interface LogDB extends DBSchema {
   entries: {
     key: number;
     value: LogEntry;
-    indexes: { timestamp: number; level: LogLevel };
+    indexes: { timestamp: string; level: LogLevel };
   };
 }
 
@@ -15,9 +15,12 @@ const RETENTION_MS = import.meta.env.DEV
   ? 24 * 60 * 60 * 1_000
   : 7 * 24 * 60 * 60 * 1_000;
 
-const IDB_STORE_VERSION = 1;
+const IDB_STORE_VERSION = 2;
 
-const getDb = createIdbStore<LogDB>('app-logs', IDB_STORE_VERSION, (db) => {
+const getDb = createIdbStore<LogDB>('app-logs', IDB_STORE_VERSION, (db, oldVersion) => {
+  if (oldVersion < 2 && db.objectStoreNames.contains('entries')) {
+    db.deleteObjectStore('entries');
+  }
   const store = db.createObjectStore('entries', { keyPath: 'id', autoIncrement: true });
   store.createIndex('timestamp', 'timestamp');
   store.createIndex('level', 'level');
@@ -34,7 +37,10 @@ export const dbRead = async (opts?: { limit?: number; since?: number }): Promise
   const db = getDb();
   if (!db) return [];
   let result = await (await db).getAll('entries');
-  if (opts?.since != null) result = result.filter((e) => e.timestamp >= opts.since!);
+  if (opts?.since != null) {
+    const sinceIso = new Date(opts.since).toISOString();
+    result = result.filter((e) => e.timestamp >= sinceIso);
+  }
   if (opts?.limit != null) result = result.slice(-opts.limit);
   return result;
 };
@@ -48,7 +54,7 @@ export const dbClear = async (): Promise<void> => {
 export const dbTrim = async (): Promise<void> => {
   const db = getDb();
   if (!db) return;
-  const cutoff = Date.now() - RETENTION_MS;
+  const cutoff = new Date(Date.now() - RETENTION_MS).toISOString();
   const database = await db;
   const tx = database.transaction('entries', 'readwrite');
   let cursor = await tx.store.index('timestamp').openCursor(IDBKeyRange.upperBound(cutoff));

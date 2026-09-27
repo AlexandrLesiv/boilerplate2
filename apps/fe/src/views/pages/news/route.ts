@@ -1,4 +1,3 @@
-import { localeFromParams } from '../../../common/libs/i18n';
 import { defineJsonLd, defineRoute } from '../../../common/libs/router';
 import { getTopStories } from './api';
 import NewsPage from './NewsPage';
@@ -8,7 +7,7 @@ export { getTopStories } from './api';
 export const newsRoute = defineRoute({
   path: '/news',
   component: NewsPage,
-  preload: ({ params }) => void getTopStories(localeFromParams(params)),
+  preload: () => void getTopStories(),
   info: {
     meta: (_, t) => ({
       title: t.pages.news.title,

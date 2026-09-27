@@ -5,6 +5,8 @@ import { createHandler, StartServer } from '@solidjs/start/server';
 import { generalTheme } from './assets/styles/themes.css';
 import { DEFAULT_LOCALE } from './common/libs/i18n';
 
+// 'async' mode waits for the full render before h3 reads the response status,
+// which lets setResponseStatus() calls inside createAsync take effect.
 export default createHandler(() => {
   const lang = getRequestEvent()?.locals.lang ?? DEFAULT_LOCALE;
   return (
@@ -25,4 +27,4 @@ export default createHandler(() => {
       )}
     />
   );
-});
+}, { mode: 'async' });

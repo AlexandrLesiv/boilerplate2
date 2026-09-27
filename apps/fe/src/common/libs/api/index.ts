@@ -1,19 +1,18 @@
-import { cache } from '@solidjs/router';
+import { query } from '@solidjs/router';
 import type { RouteSchema, SharedApiRoute } from '@repo/shared';
 
 import { useI18n } from '../i18n';
 import { apiFetch, type CallOptions } from '../fetch';
 
-export { apiFetch } from '../fetch';
+export { apiFetch, ApiError } from '../fetch';
 export type { CallOptions, RouteResponse } from '../fetch';
 
 // For GET requests — cache-based, preload-compatible.
 // Call at module level in route files; use with createAsync in components.
-// Locale is passed by the caller (from params in preload, from i18n store in components).
 export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
-  cache(
-    (locale?: string, options?: Omit<CallOptions<S>, 'signal'>) =>
-      apiFetch(route, locale, options as CallOptions<S>),
+  query(
+    (options?: Omit<CallOptions<S>, 'signal'>) =>
+      apiFetch(route, undefined, options as CallOptions<S>),
     `api:${route.method}:${route.url}`,
   );
 
