@@ -2,6 +2,7 @@ import type { Component } from 'solid-js';
 import { createSignal, Show } from 'solid-js';
 
 import { useNavigate } from '@solidjs/router';
+
 import { loginRoute } from '@repo/shared';
 
 import { createMutation } from '../../../common/libs/api';
@@ -68,7 +69,13 @@ const LoginPage: Component = () => {
             class={input}
           />
         </div>
-        <Show when={error()}>{(msg) => <p role="alert" class={errorText}>{msg()}</p>}</Show>
+        <Show when={error()}>
+          {(msg) => (
+            <p role="alert" class={errorText}>
+              {msg()}
+            </p>
+          )}
+        </Show>
         <AppButton type="submit" disabled={state.isLoading}>
           {state.isLoading ? t().pages.login.submittingBtn : t().pages.login.submitBtn}
         </AppButton>

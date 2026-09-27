@@ -4,13 +4,19 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
-    "lint:staged": "lint-staged"
+    "lint:staged": "lint-staged",
+    "lint:versions": "pnpm -r --include-workspace-root exec node -e \"const p=require('./package.json'),all={...p.dependencies,...p.devDependencies},bad=Object.entries(all).filter(([,v])=>/^[\\^~]/.test(v));if(bad.length){console.error('Non-exact versions:',bad.map(([k,v])=>k+'@'+v).join(', '));process.exit(1)}\"",
+    "check": "pnpm -r typecheck && oxlint . && oxfmt --check . && pnpm lint:versions"
   },
   "devDependencies": {
     "husky": "9.1.7",
-    "lint-staged": "17.6.0"
+    "lint-staged": "17.6.0",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

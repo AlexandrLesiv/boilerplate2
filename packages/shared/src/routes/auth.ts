@@ -18,7 +18,7 @@ export const loginRoute = defineSharedApiRoute({
         Type.Object({
           id: Type.String(),
           email: Type.String(),
-        }),
+        })
       ),
     },
   },

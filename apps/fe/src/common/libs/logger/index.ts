@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 
-import type { LogCategory, LogEntry, Logger, LogLevel } from './types';
 import { dbAppend, dbClear, dbRead, dbTrim } from './db';
+import type { LogCategory, LogEntry, Logger, LogLevel } from './types';
 
 export type { LogEntry, Logger, LogLevel, LogCategory } from './types';
 
@@ -16,9 +16,12 @@ export interface LoggerConfig {
 /* eslint-disable no-console */
 const serverLogger: Logger = {
   log: (message, data) => (data !== undefined ? console.log('[log]', message, data) : console.log('[log]', message)),
-  info: (message, data) => (data !== undefined ? console.info('[info]', message, data) : console.info('[info]', message)),
-  warn: (message, data) => (data !== undefined ? console.warn('[warn]', message, data) : console.warn('[warn]', message)),
-  error: (message, data) => (data !== undefined ? console.error('[error]', message, data) : console.error('[error]', message)),
+  info: (message, data) =>
+    data !== undefined ? console.info('[info]', message, data) : console.info('[info]', message),
+  warn: (message, data) =>
+    data !== undefined ? console.warn('[warn]', message, data) : console.warn('[warn]', message),
+  error: (message, data) =>
+    data !== undefined ? console.error('[error]', message, data) : console.error('[error]', message),
   event: (name, data) => (data !== undefined ? console.info('[event]', name, data) : console.info('[event]', name)),
   perf: (name, durationMs, data) => console.debug('[perf]', name, { ...data, durationMs }),
   apiError: (method, url, status, message) => console.error('[api]', `${method} ${url} → ${status}`, message),
@@ -61,9 +64,9 @@ const scheduleFlush = (): void => {
 };
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
-  log:   'color:#6b7280',
-  info:  'color:#3b82f6',
-  warn:  'color:#f59e0b;font-weight:bold',
+  log: 'color:#6b7280',
+  info: 'color:#3b82f6',
+  warn: 'color:#f59e0b;font-weight:bold',
   error: 'color:#ef4444;font-weight:bold',
 };
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
 
+import { withPageLayout } from '../../../../.storybook/decorators';
 import {
   loginNetworkError,
   loginServerError,
@@ -7,7 +8,6 @@ import {
   loginSuccess,
   loginUnauthorized,
 } from '../../../mocks/handlers/auth';
-import { withPageLayout } from '../../../../.storybook/decorators';
 import LoginPage from './LoginPage';
 
 const meta: Meta<typeof LoginPage> = {
@@ -29,7 +29,7 @@ async function fillAndSubmit(
   canvas: Parameters<NonNullable<Story['play']>>[0]['canvas'],
   userEvent: Parameters<NonNullable<Story['play']>>[0]['userEvent'],
   email: string,
-  password: string,
+  password: string
 ) {
   await userEvent.type(canvas.getByLabelText(/email/i), email);
   await userEvent.type(canvas.getByLabelText(/password/i), password);
@@ -88,7 +88,7 @@ export const VeryLongEmail: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.type(
       canvas.getByLabelText(/email/i),
-      'averylonglocalpart.that.goes.on.and.on.and.on@subdomain.verylongdomainname.example.com',
+      'averylonglocalpart.that.goes.on.and.on.and.on@subdomain.verylongdomainname.example.com'
     );
   },
 };
@@ -133,10 +133,7 @@ export const UnicodeEmail: Story = {
  */
 export const XssAttemptEmail: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(
-      canvas.getByLabelText(/email/i),
-      '<script>alert(1)</script>@example.com',
-    );
+    await userEvent.type(canvas.getByLabelText(/email/i), '<script>alert(1)</script>@example.com');
     await userEvent.type(canvas.getByLabelText(/password/i), 'password');
   },
 };

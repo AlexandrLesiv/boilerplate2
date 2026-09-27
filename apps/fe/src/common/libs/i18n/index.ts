@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 
 import { query, createAsync } from '@solidjs/router';
+
 import en from './locales/en.json';
 
 export type Translations = typeof en;

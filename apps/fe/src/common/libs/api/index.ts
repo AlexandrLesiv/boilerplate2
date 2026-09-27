@@ -1,8 +1,9 @@
 import { query } from '@solidjs/router';
+
 import type { RouteSchema, SharedApiRoute } from '@repo/shared';
 
-import { useI18n } from '../i18n';
 import { apiFetch, type CallOptions } from '../fetch';
+import { useI18n } from '../i18n';
 
 export { apiFetch, ApiError } from '../fetch';
 export type { CallOptions, RouteResponse } from '../fetch';
@@ -11,9 +12,8 @@ export type { CallOptions, RouteResponse } from '../fetch';
 // Call at module level in route files; use with createAsync in components.
 export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
   query(
-    (options?: Omit<CallOptions<S>, 'signal'>) =>
-      apiFetch(route, undefined, options as CallOptions<S>),
-    `api:${route.method}:${route.url}`,
+    (options?: Omit<CallOptions<S>, 'signal'>) => apiFetch(route, undefined, options as CallOptions<S>),
+    `api:${route.method}:${route.url}`
   );
 
 // For mutations (POST/PUT/DELETE) — reads locale from i18n context, not cached.

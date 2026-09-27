@@ -11,9 +11,7 @@ interface LogDB extends DBSchema {
   };
 }
 
-const RETENTION_MS = import.meta.env.DEV
-  ? 24 * 60 * 60 * 1_000
-  : 7 * 24 * 60 * 60 * 1_000;
+const RETENTION_MS = import.meta.env.DEV ? 24 * 60 * 60 * 1_000 : 7 * 24 * 60 * 60 * 1_000;
 
 const IDB_STORE_VERSION = 2;
 

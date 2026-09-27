@@ -5,14 +5,18 @@ import { apiBaseUrl } from '../../constants/environment';
 import { logger } from '../logger';
 
 export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export type CallOptions<S extends RouteSchema> =
-  (S['querystring'] extends TSchema ? { querystring?: Static<S['querystring']> } : { querystring?: never }) &
+export type CallOptions<S extends RouteSchema> = (S['querystring'] extends TSchema
+  ? { querystring?: Static<S['querystring']> }
+  : { querystring?: never }) &
   (S['body'] extends TSchema ? { body: Static<S['body']> } : { body?: never }) &
   (S['params'] extends TSchema ? { params: Static<S['params']> } : { params?: never }) & {
     signal?: AbortSignal;
@@ -25,7 +29,7 @@ export type RouteResponse<S extends RouteSchema> = S['response'] extends { 200: 
 export const buildRouteUrl = (
   url: string,
   params?: Record<string, unknown>,
-  querystring?: Record<string, unknown>,
+  querystring?: Record<string, unknown>
 ): string => {
   const path = params
     ? url.replace(/:([^/]+)/g, (_, key: string) => encodeURIComponent(String(params[key] ?? '')))
@@ -42,12 +46,12 @@ export const buildRouteUrl = (
 export const apiFetch = async <S extends RouteSchema>(
   route: SharedApiRoute<S>,
   locale?: string,
-  options?: CallOptions<S>,
+  options?: CallOptions<S>
 ): Promise<RouteResponse<S>> => {
   const url = buildRouteUrl(
     route.url,
     options?.params as Record<string, unknown> | undefined,
-    options?.querystring as Record<string, unknown> | undefined,
+    options?.querystring as Record<string, unknown> | undefined
   );
   const hasBody = (options as { body?: unknown } | undefined)?.body !== undefined;
   const headers: Record<string, string> = {};

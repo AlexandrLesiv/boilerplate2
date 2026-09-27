@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { http, HttpResponse } from 'msw';
-
 import { topStoriesRoute } from '@repo/shared';
+import { http, HttpResponse } from 'msw';
 
 function fakeStory() {
   return {

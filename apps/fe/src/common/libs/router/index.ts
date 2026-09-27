@@ -1,7 +1,7 @@
 import type { Params, RouteDefinition } from '@solidjs/router';
 
-import type { JsonLdSchema } from '../seo/JsonLd';
 import type { Translations } from '../i18n';
+import type { JsonLdSchema } from '../seo/JsonLd';
 
 export type { JsonLdSchema } from '../seo/JsonLd';
 export { defineJsonLd } from '../seo/JsonLd';

@@ -4,7 +4,13 @@ import { For, Show, Suspense, createEffect } from 'solid-js';
 import { Link, Meta, Title } from '@solidjs/meta';
 import { A, useCurrentMatches, useLocation, useParams } from '@solidjs/router';
 
-import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromParams } from '../../common/libs/i18n';
+import {
+  I18nContext,
+  createI18nStore,
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  localeFromParams,
+} from '../../common/libs/i18n';
 import type { Locale } from '../../common/libs/i18n';
 import type { AppRouteInfo } from '../../common/libs/router';
 import { JsonLd } from '../../common/libs/seo/JsonLd';
@@ -53,7 +59,9 @@ const RootLayout: Component<ParentProps> = (props) => {
       <Link rel="alternate" hreflang="x-default" href={pagePath()} />
 
       <Suspense>
-        <Title>{routeMeta()?.title ?? ''}</Title>
+        <Show when={routeMeta()?.title}>
+          <Title>{routeMeta()!.title}</Title>
+        </Show>
         <Show when={routeMeta()?.description}>
           <Meta name="description" content={routeMeta()!.description!} />
         </Show>
@@ -61,9 +69,7 @@ const RootLayout: Component<ParentProps> = (props) => {
           <Meta name="robots" content={routeMeta()!.robots!} />
         </Show>
         <Link rel="canonical" href={routeMeta()?.canonical ?? pagePath()} />
-        <Show when={routeMeta()?.schema}>
-          {(schema) => <JsonLd schema={schema()} />}
-        </Show>
+        <Show when={routeMeta()?.schema}>{(schema) => <JsonLd schema={schema()} />}</Show>
       </Suspense>
 
       <div>

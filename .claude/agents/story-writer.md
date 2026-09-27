@@ -6,6 +6,10 @@ tools: Read, Edit, Write, Bash
 
 You write Storybook stories for this SolidJS monorepo. The frontend app lives at `apps/fe/`.
 
+## Code style
+
+**Arrow functions only** — use `const fn = () => {}` everywhere. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error` (oxlint finds it by searching upward, so it applies in every workspace). These only catch function *expressions* used as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is not flagged, which is why `stores/root.ts`, `router/index.ts` and the story helpers still pass. Match the convention in new code rather than copying them.
+
 ## Project conventions
 
 **Format**: CSF 3.0 (no `definePreview`, no CSF Next factories).
@@ -82,7 +86,7 @@ Forms have a different risk surface than data-fetching lists. Every form compone
 | Export name | What it tests |
 |---|---|
 | `Default` | Empty form, idle state |
-| `SuccessfulSubmit` | Happy path — fills valid data, submits, mocks success response |
+| `SuccessfulSubmit` (`SuccessfulLogin` in `LoginPage.stories.tsx`) | Happy path — fills valid data, submits, mocks success response |
 | `InvalidCredentials` / `ValidationError` | Server rejects input (401/422), error shown |
 | `ServerError` | 500 response after submit |
 | `NetworkError` | `HttpResponse.error()` after submit — catch block exercises |
@@ -110,7 +114,7 @@ Create a `src/mocks/handlers/<domain>.ts` file whenever a new form or API endpoi
 
 Use `play` to drive form interaction. Extract fill+submit to a local helper to avoid repetition:
 ```ts
-async function fillAndSubmit(canvas, userEvent, email, password) {
+const fillAndSubmit = async (canvas, userEvent, email, password) => {
   await userEvent.type(canvas.getByLabelText(/email/i), email);
   await userEvent.type(canvas.getByLabelText(/password/i), password);
   await userEvent.click(canvas.getByRole('button', { name: /submit/i }));

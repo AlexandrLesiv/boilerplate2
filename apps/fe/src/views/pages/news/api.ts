@@ -1,5 +1,6 @@
-import { articleRoute, topStoriesRoute } from '@repo/shared';
 import { query } from '@solidjs/router';
+
+import { articleRoute, topStoriesRoute } from '@repo/shared';
 
 import { createApiCall } from '../../../common/libs/api';
 import { buildRouteUrl } from '../../../common/libs/fetch';

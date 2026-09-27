@@ -3,7 +3,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 export const createIdbStore = <T extends DBSchema>(
   name: string,
   version: number,
-  onUpgrade: (db: IDBPDatabase<T>, oldVersion: number) => void,
+  onUpgrade: (db: IDBPDatabase<T>, oldVersion: number) => void
 ) => {
   let promise: ReturnType<typeof openDB<T>> | null = null;
   return (): ReturnType<typeof openDB<T>> | null => {

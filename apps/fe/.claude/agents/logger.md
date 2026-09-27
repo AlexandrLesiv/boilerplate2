@@ -8,7 +8,7 @@ You add and review logging in the SolidJS frontend app. The logger lives at `app
 
 ## Code style
 
-**Arrow functions only** — use `const fn = () => {}` everywhere. Never use `function` declarations or expressions. oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
+**Arrow functions only** — use `const fn = () => {}` everywhere. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error` (oxlint finds it by searching upward, so it applies in every workspace). These only catch function *expressions* used as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is not flagged, which is why `stores/root.ts`, `router/index.ts` and the story helpers still pass. Match the convention in new code rather than copying them.
 
 ## Architecture
 
@@ -16,17 +16,19 @@ You add and review logging in the SolidJS frontend app. The logger lives at `app
 logger/
   types.ts     LogEntry, LogLevel, LogCategory, Logger interface
   db.ts        idb wrapper — dbAppend, dbRead, dbClear, dbTrim
-  index.ts     logger singleton, LoggerContext, useLogger, initLogger()
+  index.ts     logger + createLogger, LoggerContext, useLogger, exportLogs
 ```
 
 **Storage**: IndexedDB via the `idb` library. Database name: `app-logs`, object store: `entries`.
-**Retention**: 7 days in production, 24 hours in dev. Entries older than the cutoff are deleted once on `initLogger()` using a timestamp index range scan.
+**Retention**: 7 days in production, 24 hours in dev. Entries older than the cutoff are deleted once on `createLogger()` (called from `AppProvider`) using a timestamp index range scan.
 
 **Buffer**: log calls push to an in-memory array, flushed to IDB every 10 s, on buffer reaching 100 entries, or on `visibilitychange: hidden` / `pagehide`. The logger never throws — IDB failures are silently dropped.
 
 **Session**: `sessionId` is a UUID stored in `sessionStorage` under `log:session`. It survives navigation within a tab but is new for each tab and after a hard reload.
 
 **DI**: `LoggerContext.Provider` wraps the app in `AppProvider.tsx`. Components access the logger via `useLogger()`.
+
+**SSR**: `index.ts` picks the implementation off `import.meta.env.SSR`. On the server the logger is a plain `console` passthrough — no IDB, no buffering, no `window`, no export. Log calls from isomorphic code are therefore always safe, but anything logged during SSR only reaches the server's stdout, never the IDB history.
 
 ## Public API
 
@@ -95,7 +97,7 @@ const result = await heavyOperation();
 logger.perf('heavyOperation', performance.now() - t0);
 ```
 
-API calls via `createApiCall` and `api.*` log perf and errors **automatically** — do not add duplicate logging around them.
+API calls via `createApiCall` and `createMutation` both go through `apiFetch`, which logs perf and errors **automatically** — do not add duplicate logging around them.
 
 ### Add navigation logging when using `useNavigate`
 ```ts

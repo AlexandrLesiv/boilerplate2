@@ -1,4 +1,12 @@
-export { defineEntity, defineListResponse, defineResponse, type InferEntity, ok, okList, type RouteSchema } from '@repo/shared';
+export {
+  defineEntity,
+  defineListResponse,
+  defineResponse,
+  type InferEntity,
+  ok,
+  okList,
+  type RouteSchema,
+} from '@repo/shared';
 
 import type { RouteSchema } from '@repo/shared';
 

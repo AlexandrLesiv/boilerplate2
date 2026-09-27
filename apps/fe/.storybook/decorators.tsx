@@ -23,13 +23,13 @@ type DecoratorFn = (Story: () => JSX.Element) => JSX.Element;
  * storybook-solidjs-vite adapter skips re-invoking it on re-renders
  * (viewport changes, args updates) — preventing null-owner reactive crashes.
  */
-const solidDecorator = (
-  render: (Story: () => JSX.Element, opts: ProviderOptions) => JSX.Element,
-) => (opts: ProviderOptions = {}): DecoratorFn => {
-  const decorator: DecoratorFn = (Story) => render(Story, opts);
-  (decorator as unknown as Record<string, unknown>).__isJSX = true;
-  return decorator;
-};
+const solidDecorator =
+  (render: (Story: () => JSX.Element, opts: ProviderOptions) => JSX.Element) =>
+  (opts: ProviderOptions = {}): DecoratorFn => {
+    const decorator: DecoratorFn = (Story) => render(Story, opts);
+    (decorator as unknown as Record<string, unknown>).__isJSX = true;
+    return decorator;
+  };
 
 // Static providers that don't need router context.
 const AppProviders = (props: { children: JSX.Element; user?: { id: string; email: string } | null }) => {
@@ -42,9 +42,7 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
     <MetaProvider>
       <div class={generalTheme}>
         <LoggerContext.Provider value={logger}>
-          <RootStoreContext.Provider value={store}>
-            {props.children}
-          </RootStoreContext.Provider>
+          <RootStoreContext.Provider value={store}>{props.children}</RootStoreContext.Provider>
         </LoggerContext.Provider>
       </div>
     </MetaProvider>
@@ -61,11 +59,14 @@ const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
 export const withAppProviders = solidDecorator((Story, { user = null }) => (
   <AppProviders user={user}>
     <MemoryRouter>
-      <Route path="/*" component={() => (
-        <WithI18n>
-          <Story />
-        </WithI18n>
-      )} />
+      <Route
+        path="/*"
+        component={() => (
+          <WithI18n>
+            <Story />
+          </WithI18n>
+        )}
+      />
     </MemoryRouter>
   </AppProviders>
 ));

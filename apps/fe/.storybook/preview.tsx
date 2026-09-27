@@ -1,5 +1,5 @@
-import type { Preview } from 'storybook-solidjs-vite';
 import { mswLoader } from 'msw-storybook-addon/csf3';
+import type { Preview } from 'storybook-solidjs-vite';
 
 import '../src/assets/styles/global.css.ts';
 import { hackernewsHandlers } from '../src/mocks/handlers/hackernews';

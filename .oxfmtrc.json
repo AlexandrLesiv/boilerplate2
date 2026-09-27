@@ -15,16 +15,23 @@
     "ignoreCase": true,
     "newlinesBetween": true,
     "customGroups": [
-      { "groupName": "solid-js", "elementNamePattern": ["solid-js", "solid-js/*"] },
-      { "groupName": "solidjs-ecosystem", "elementNamePattern": ["@solidjs/*"] }
+      {
+        "groupName": "solid-js",
+        "elementNamePattern": ["solid-js", "solid-js/*"]
+      },
+      {
+        "groupName": "solidjs-ecosystem",
+        "elementNamePattern": ["@solidjs/*"]
+      }
     ],
-    "groups": [
-      "solid-js",
-      "solidjs-ecosystem",
-      "external",
-      "internal",
-      ["parent", "sibling", "index"]
-    ]
+    "groups": ["solid-js", "solidjs-ecosystem", "external", "internal", ["parent", "sibling", "index"]]
   },
-  "ignorePatterns": ["dist/**", "node_modules/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "**/*.md",
+    "**/public/**",
+    "**/storybook-public/**",
+    "**/settings.local.json"
+  ]
 }

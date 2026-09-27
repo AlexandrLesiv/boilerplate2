@@ -1,11 +1,10 @@
-
-import fastify from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { env } from 'process';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import fastify from 'fastify';
 
+import { env } from './common/env.js';
 import { hackerNewsRoutes } from './routes/hackernews/index.js';
 
 const app = fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
@@ -24,7 +23,5 @@ await app.register(swaggerUi, {
 
 await app.register(hackerNewsRoutes);
 
-const port = Number(env.PORT ?? 4000);
-await app.listen({ port, host: '0.0.0.0' }).then((r) => {
-  console.log(`Listening at: ${r}`)
-});
+const port = env.PORT;
+await app.listen({ port, host: '0.0.0.0' });

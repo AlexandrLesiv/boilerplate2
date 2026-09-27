@@ -35,8 +35,8 @@ pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 
 ## Key conventions
 
-- **Arrow functions everywhere** — use `const fn = () => {}` for all functions. Named `function` declarations are not used in this codebase; oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
-- **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm --filter fe lint:versions` to check.
+- **Arrow functions everywhere** — use `const fn = () => {}` for all functions. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error`, and oxlint finds that config by searching upward, so it applies from any workspace. Be aware of the gap: those rules only catch function *expressions* passed as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is **not** flagged. That is why `common/libs/stores/root.ts`, `common/libs/router/index.ts` and the `*.stories.tsx` helpers still pass lint; follow the convention in new code rather than copying them.
+- **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm lint:versions` from the repo root; it checks every workspace plus the root.
 - **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. No locale — GET routes are locale-agnostic.
 - **`createMutation(route)`** for POST/PUT/DELETE — call inside a component (it's a hook that reads locale from `useI18n`), returns a typed async function for use in event handlers.
 - **TypeBox is stripped from the client bundle** — `vite-plugins/strip-typebox.ts` replaces `@sinclair/typebox` with a no-op Proxy in the `client` Vite environment. Do not rely on TypeBox runtime behavior in browser code.
@@ -70,6 +70,37 @@ Once violations are resolved, promote stories to `a11y: { test: 'error' }` in th
 
 The `storybook-a11y` agent uses the Playwright MCP browser to snapshot the ARIA tree and verify keyboard navigation in the live Storybook. Make sure Storybook is running before invoking it in audit mode.
 
+## Logging
+
+**Never call `console.*` in app code — always use the custom logger.** `console` output vanishes when the tab closes. The logger persists to IndexedDB (`app-logs`), buffers and flushes in batches, tags every entry with a session id and URL, captures `window.onerror` and `unhandledrejection`, and can export a session as JSON. `.oxlintrc.json` sets `no-console` to `warn` with only `warn`/`error` allowed, so a stray `console.log` surfaces a warning but does not fail `pnpm lint` — treat the rule as binding anyway. `apps/fe/src` currently has zero `console.*` calls outside the logger itself (which carries an explicit disable comment) — keep it that way.
+
+How to get a logger:
+- **Inside components** — `const logger = useLogger();` from `src/common/libs/logger`. Provided via `LoggerContext` in `AppProvider.tsx`.
+- **Outside components** (module scope, api helpers, stores) — import the `logger` singleton from the same module.
+- Never import `logger/db.ts` directly; it is the storage layer, not the API.
+
+Pick the method by intent, not just severity — each one sets a different `LogCategory`, which is what makes logs filterable:
+
+| Method | Category | Use for |
+|---|---|---|
+| `event(name, data)` | `user-action` | deliberate user actions — submit, toggle, open |
+| `navigation(to)` | `navigation` | route changes |
+| `apiError(method, url, status, msg)` | `api` | failed requests (already wired into `common/libs/fetch`) |
+| `perf(name, durationMs, data)` | `performance` | timings |
+| `error` / `warn` / `info` / `log` | `custom` | everything else |
+
+Rules:
+- **Message names are dotted, stable identifiers**, not prose: `login.submit`, `login.failed`, `app.start`. They are grep keys. Never interpolate values into the name — put them in `data`.
+- **Never log secrets or PII** — no passwords, tokens, or raw emails. Log shape instead: `logger.event('login.submit', { hasEmail: !!email() })`.
+- `data` is a `Record<string, unknown>` and gets structured-cloned into IDB, so keep it plain and serialisable.
+- The logger never throws — IDB failures are dropped silently. Do not wrap log calls in `try`/`catch`.
+- Under SSR the same import is a plain console passthrough (no IDB, no buffering), so it is safe to call from isomorphic code.
+- In dev, read logs from the browser console: `window.__logger.read()`, `.flush()`, `.clear()`, `.export()`.
+
+Use the `logger` agent (`.claude/agents/logger.md`) when adding a feature that needs observability or auditing a component for missing log calls.
+
+**`apps/api`** has no custom logger — use Fastify's built-in one (`app.log`, `request.log`), not `console.*`. The exception is bootstrap code that runs before the Fastify instance exists, such as env validation in `src/common/env.ts`, where `console.error` is correct.
+
 ## Running locally
 
 ```sh
@@ -85,8 +116,11 @@ pnpm --filter api dev
 # Storybook
 pnpm --filter fe storybook
 
-# Type check all
-pnpm --filter fe typecheck && pnpm --filter @repo/shared typecheck
+# Type check all workspaces that define a typecheck script (apps/fe, apps/api)
+pnpm -r typecheck
+
+# Everything: typecheck + lint + format check + version pinning
+pnpm check
 ```
 
 ## SEO requirements
@@ -129,6 +163,8 @@ export const exampleRoute = defineRoute({
 
 Routes are defined as siblings under the locale layout route (`/:locale?`), not as nested children. **Do not add `children` to a route that has its own `component`** — in SolidJS Router v1, doing so turns the component into a layout that requires `<Outlet>`, and navigating to the parent path exact will not render the component content.
 
+**Trailing slashes**: exactly one URL form is valid — the slash-free one. `src/middleware.ts` 301-redirects any path ending in `/` (root excepted) to the slash-free form, preserving the query string. Do not author links with trailing slashes, and keep `canonical`/`hreflang` hrefs slash-free so they agree with the redirect target.
+
 Use full paths for "sub-pages":
 ```ts
 // ✓ siblings with full paths
@@ -162,6 +198,19 @@ IDB stores are created via `createIdbStore` in `apps/fe/src/common/libs/idb/inde
 - Never call `createObjectStore` unconditionally — it throws if the store already exists, aborting the transaction.
 - Deleting and recreating a store is the right migration when an indexed field's type changes (e.g. `number` → `string`), because IDB index comparisons are type-sensitive.
 - IDB timestamps are stored as ISO 8601 strings (`new Date().toISOString()`), not Unix timestamps. ISO strings sort correctly as strings so IDB range queries still work.
+
+## Adding a new environment variable
+
+**Frontend (`apps/fe`):**
+1. Add the variable to `apps/fe/vite-plugins/validate-env.ts` in `EnvSchema`
+2. Add a declaration in `apps/fe/src/env.d.ts` under `ImportMetaEnv` (non-optional `string`)
+3. Add it to `apps/fe/.env.example` with a description comment and a sensible default
+
+**Backend (`apps/api`):**
+1. Add the variable to `apps/api/src/common/env.ts` in `EnvSchema`
+2. Add it to `apps/api/.env.example` with a description comment and a sensible default
+
+Never add env variables in only one place — schema, type declaration, and example file must all be updated together.
 
 ## Adding a new API endpoint
 

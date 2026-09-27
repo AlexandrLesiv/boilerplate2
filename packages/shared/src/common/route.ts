@@ -30,8 +30,10 @@ export type InferRouteResponse<T extends SharedApiRoute<RouteSchema>, Status ext
       : never
     : never;
 
-export type InferRouteQuerystring<T extends SharedApiRoute<RouteSchema>> =
-  T['schema']['querystring'] extends TSchema ? Static<T['schema']['querystring']> : never;
+export type InferRouteQuerystring<T extends SharedApiRoute<RouteSchema>> = T['schema']['querystring'] extends TSchema
+  ? Static<T['schema']['querystring']>
+  : never;
 
-export type InferRouteBody<T extends SharedApiRoute<RouteSchema>> =
-  T['schema']['body'] extends TSchema ? Static<T['schema']['body']> : never;
+export type InferRouteBody<T extends SharedApiRoute<RouteSchema>> = T['schema']['body'] extends TSchema
+  ? Static<T['schema']['body']>
+  : never;

@@ -1,8 +1,7 @@
 import { faker } from '@faker-js/faker';
+import { topStoriesRoute } from '@repo/shared';
 import { http, HttpResponse } from 'msw';
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
-
-import { topStoriesRoute } from '@repo/shared';
 
 import { withPageLayout } from '../../../../.storybook/decorators';
 import NewsPage from './NewsPage';
@@ -79,7 +78,7 @@ export const ServerError500: Story = {
     msw: {
       handlers: [
         http.get(`*${topStoriesRoute.url}`, () =>
-          HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 }),
+          HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })
         ),
       ],
     },
@@ -91,7 +90,7 @@ export const ServerError503: Story = {
     msw: {
       handlers: [
         http.get(`*${topStoriesRoute.url}`, () =>
-          HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 }),
+          HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 })
         ),
       ],
     },
@@ -196,8 +195,7 @@ export const AllEdgeCases: Story = {
       handlers: [
         handler([
           story({
-            title:
-              'https://no-spaces-very-long-url-title.example.com/path/nested/resource?a=1&b=2&c=3',
+            title: 'https://no-spaces-very-long-url-title.example.com/path/nested/resource?a=1&b=2&c=3',
             score: 99_999,
             descendants: 9_999,
             by: 'username_with_many_characters_that_keeps_going',

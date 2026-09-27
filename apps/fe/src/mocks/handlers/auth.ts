@@ -1,18 +1,16 @@
-import { http, HttpResponse } from 'msw';
 import { loginRoute } from '@repo/shared';
+import { http, HttpResponse } from 'msw';
 
 const url = `*${loginRoute.url}`;
 
-export const loginSuccess = http.post(url, () =>
-  HttpResponse.json({ data: { id: '1', email: 'user@example.com' } }),
-);
+export const loginSuccess = http.post(url, () => HttpResponse.json({ data: { id: '1', email: 'user@example.com' } }));
 
 export const loginUnauthorized = http.post(url, () =>
-  HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 }),
+  HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 })
 );
 
 export const loginServerError = http.post(url, () =>
-  HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 }),
+  HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })
 );
 
 export const loginNetworkError = http.post(url, () => HttpResponse.error());

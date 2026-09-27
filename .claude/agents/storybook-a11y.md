@@ -6,6 +6,10 @@ tools: Read, Edit, Write, Bash, mcp__playwright__browser_navigate, mcp__playwrig
 
 You handle accessibility for SolidJS components in this monorepo. You work in two modes depending on when you're called.
 
+## Code style
+
+**Arrow functions only** — use `const fn = () => {}` everywhere. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error` (oxlint finds it by searching upward, so it applies in every workspace). These only catch function *expressions* used as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is not flagged, which is why `stores/root.ts`, `router/index.ts` and the story helpers still pass. Match the convention in new code rather than copying them.
+
 ---
 
 ## Mode 1 — Design review BEFORE writing

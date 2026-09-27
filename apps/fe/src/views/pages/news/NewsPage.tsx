@@ -2,12 +2,11 @@ import type { Component } from 'solid-js';
 import { ErrorBoundary, For, Suspense } from 'solid-js';
 
 import { createAsync } from '@solidjs/router';
-
 import { A } from '@solidjs/router';
 
 import { format, useI18n } from '../../../common/libs/i18n';
-import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
 import { getTopStories } from './api';
+import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
 
 const NewsPage: Component = () => {
   const { t } = useI18n();
