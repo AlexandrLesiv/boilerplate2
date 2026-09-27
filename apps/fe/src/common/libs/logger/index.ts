@@ -63,7 +63,7 @@ const scheduleFlush = (): void => {
 };
 
 const push = (level: LogLevel, category: LogCategory, message: string, data?: Record<string, unknown>): void => {
-  if (import.meta.env.DEV) {  // only reached from clientLogger, SSR already excluded
+  if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
     const consoleFn = level === 'log' ? console.debug : console[level];
     if (data !== undefined) consoleFn(`[${category}] ${message}`, data);
