@@ -7,14 +7,12 @@ import { logger } from '../logger';
 import type { ApiConfig } from './config';
 
 export type { ApiConfig } from './config';
-export type DownloadProgress = { loaded: number; total: number | null };
 
 type CallOptions<S extends RouteSchema> =
-  (S['querystring'] extends TSchema ? { querystring: Static<S['querystring']> } : { querystring?: never }) &
+  (S['querystring'] extends TSchema ? { querystring?: Static<S['querystring']> } : { querystring?: never }) &
   (S['body'] extends TSchema ? { body: Static<S['body']> } : { body?: never }) &
   (S['params'] extends TSchema ? { params: Static<S['params']> } : { params?: never }) & {
     signal?: AbortSignal;
-    onDownloadProgress?: (progress: DownloadProgress) => void;
   };
 
 type RouteResponse<S extends RouteSchema> = S['response'] extends { 200: TSchema }
@@ -38,24 +36,6 @@ const buildRouteUrl = (
   return full.toString();
 };
 
-const consumeBody = async <T>(response: Response, onProgress?: (p: DownloadProgress) => void): Promise<T> => {
-  if (!onProgress || !response.body) return response.json() as Promise<T>;
-  const contentLength = response.headers.get('Content-Length');
-  const total = contentLength !== null ? Number(contentLength) : null;
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let text = '';
-  let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    loaded += value.length;
-    text += decoder.decode(value, { stream: true });
-    onProgress({ loaded, total });
-  }
-  text += decoder.decode();
-  return JSON.parse(text) as T;
-};
 
 export const createApi = ({ getLocale, getToken }: ApiConfig = {}) => {
   const buildHeaders = (hasBody: boolean, extra?: Record<string, string>): Record<string, string> => {
@@ -72,7 +52,7 @@ export const createApi = ({ getLocale, getToken }: ApiConfig = {}) => {
     method: string,
     url: string,
     body?: unknown,
-    options?: { signal?: AbortSignal; headers?: Record<string, string>; onDownloadProgress?: (p: DownloadProgress) => void },
+    options?: { signal?: AbortSignal; headers?: Record<string, string> },
   ): Promise<T> => {
     const hasBody = body !== undefined;
     const t0 = performance.now();
@@ -88,7 +68,7 @@ export const createApi = ({ getLocale, getToken }: ApiConfig = {}) => {
       throw new Error(`Request failed: ${response.status} ${response.statusText}`);
     }
     logger.perf(`api.${method.toLowerCase()}.${url}`, durationMs);
-    return consumeBody<T>(response, options?.onDownloadProgress);
+    return response.json() as Promise<T>;
   };
 
   const call = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
@@ -101,7 +81,7 @@ export const createApi = ({ getLocale, getToken }: ApiConfig = {}) => {
           options?.querystring as Record<string, unknown> | undefined,
         ),
         options?.body,
-        { signal: options?.signal, onDownloadProgress: options?.onDownloadProgress },
+        { signal: options?.signal },
       );
 
   return { call };

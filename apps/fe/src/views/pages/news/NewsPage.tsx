@@ -1,6 +1,7 @@
 import type { Component } from 'solid-js';
-import { ErrorBoundary, For, Suspense, createResource } from 'solid-js';
+import { ErrorBoundary, For, Suspense, onCleanup } from 'solid-js';
 
+import { createAsync } from '@solidjs/router';
 import { topStoriesRoute } from '@repo/shared';
 
 import { createApiCall } from '../../../common/libs/api';
@@ -9,8 +10,11 @@ import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css'
 
 const NewsPage: Component = () => {
   const { t } = useI18n();
-  const fetchTopStories = createApiCall(topStoriesRoute);
-  const [response] = createResource(() => fetchTopStories());
+  const response = createAsync(() => {
+    const controller = new AbortController();
+    onCleanup(() => controller.abort());
+    return createApiCall(topStoriesRoute)({ signal: controller.signal });
+  });
   const stories = () => response()?.data ?? [];
 
   const hnItemUrl = (id: number) => `https://news.ycombinator.com/item?id=${id}`;
