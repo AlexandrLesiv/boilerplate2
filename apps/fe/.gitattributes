@@ -1,0 +1,7 @@
+*.ts  text eol=lf
+*.tsx  text eol=lf
+*.vue  text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.webp binary

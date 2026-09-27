@@ -1,0 +1,75 @@
+import type { Component } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
+
+import { useNavigate } from '@solidjs/router';
+
+import { api } from '../../../common/libs/fetch';
+import { useI18n } from '../../../common/libs/i18n';
+import { useRootStore } from '../../../common/libs/stores/root';
+import { AppButton } from '../../components/Button/AppButton';
+import { container, title, form, fieldGroup, input, errorText } from './styles.css';
+
+const LoginPage: Component = () => {
+  const navigate = useNavigate();
+  const { setUser, setLoading, state } = useRootStore();
+  const { t } = useI18n();
+  const [email, setEmail] = createSignal('');
+  const [password, setPassword] = createSignal('');
+  const [error, setError] = createSignal<string | null>(null);
+
+  const handleSubmit = async (e: SubmitEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const user = await api.post<{ id: string; email: string }>('/api/auth/login', {
+        email: email(),
+        password: password(),
+      });
+      setUser(user);
+      void navigate('/');
+    } catch {
+      setError(t().pages.login.errorInvalidCredentials);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div class={container}>
+      <h1 class={title}>{t().pages.login.title}</h1>
+      <form onSubmit={handleSubmit} class={form}>
+        <div class={fieldGroup}>
+          <label for="email">{t().pages.login.emailLabel}</label>
+          <input
+            id="email"
+            type="email"
+            autocomplete="email"
+            value={email()}
+            onInput={(e) => setEmail(e.target.value)}
+            required
+            class={input}
+          />
+        </div>
+        <div class={fieldGroup}>
+          <label for="password">{t().pages.login.passwordLabel}</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            value={password()}
+            onInput={(e) => setPassword(e.target.value)}
+            required
+            class={input}
+          />
+        </div>
+        <Show when={error()}>{(msg) => <p role="alert" class={errorText}>{msg()}</p>}</Show>
+        <AppButton type="submit" disabled={state.isLoading}>
+          {state.isLoading ? t().pages.login.submittingBtn : t().pages.login.submitBtn}
+        </AppButton>
+      </form>
+    </div>
+  );
+};
+
+export default LoginPage;

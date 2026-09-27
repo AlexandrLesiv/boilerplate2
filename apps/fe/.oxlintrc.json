@@ -1,0 +1,16 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/oxlint@latest/configuration_schema.json",
+  "jsPlugins": ["eslint-plugin-solid"],
+  "env": {
+    "browser": true,
+    "es2025": true
+  },
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "solid/reactivity": "warn",
+    "solid/no-innerhtml": "error",
+    "solid/jsx-no-undef": "error",
+    "solid/no-array-handlers": "warn"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**"]
+}

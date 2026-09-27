@@ -1,0 +1,17 @@
+{
+  "files": [
+    {
+      "path": "dist/client/_build/assets/**/*.js",
+      "maxSize": "120kB",
+      "compression": "none"
+    },
+    {
+      "path": "dist/client/_build/assets/**/*.css",
+      "maxSize": "60kB",
+      "compression": "none"
+    }
+  ],
+  "ci": {
+    "trackBranches": ["main", "develop"]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "insertFinalNewline": true,
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "jsxSingleQuote": false,
+  "sortImports": {
+    "order": "asc",
+    "ignoreCase": true,
+    "newlinesBetween": true,
+    "customGroups": [
+      { "groupName": "solid-js", "elementNamePattern": ["solid-js", "solid-js/*"] },
+      { "groupName": "solidjs-ecosystem", "elementNamePattern": ["@solidjs/*"] }
+    ],
+    "groups": [
+      "solid-js",
+      "solidjs-ecosystem",
+      "external",
+      "internal",
+      ["parent", "sibling", "index"]
+    ]
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**"]
+}
