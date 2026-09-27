@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "home": "Главная",
+    "news": "Новости",
+    "login": "Войти"
+  },
+  "pages": {
+    "news": {
+      "title": "Hacker News",
+      "description": "Топ материалы с Hacker News",
+      "loading": "Загрузка…",
+      "score": "{n} очков",
+      "by": "автор {user}",
+      "comments": "{n} комментариев"
+    },
+    "home": {
+      "title": "Главная",
+      "welcomeAnon": "Добро пожаловать! Пожалуйста, войдите.",
+      "welcomeUser": "Добро пожаловать, {email}!"
+    },
+    "login": {
+      "title": "Вход",
+      "emailLabel": "Электронная почта",
+      "passwordLabel": "Пароль",
+      "submitBtn": "Войти",
+      "submittingBtn": "Вход…",
+      "errorInvalidCredentials": "Неверный адрес почты или пароль"
+    }
+  }
+}

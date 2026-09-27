@@ -2,8 +2,9 @@ import type { Component } from 'solid-js';
 import { createSignal, Show } from 'solid-js';
 
 import { useNavigate } from '@solidjs/router';
+import { loginRoute } from '@repo/shared';
 
-import { api } from '../../../common/libs/fetch';
+import { createApiCall } from '../../../common/libs/api';
 import { useI18n } from '../../../common/libs/i18n';
 import { useLogger } from '../../../common/libs/logger';
 import { useRootStore } from '../../../common/libs/stores/root';
@@ -14,6 +15,7 @@ const LoginPage: Component = () => {
   const navigate = useNavigate();
   const { setUser, setLoading, state } = useRootStore();
   const { t } = useI18n();
+  const login = createApiCall(loginRoute);
   const logger = useLogger();
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
@@ -25,10 +27,7 @@ const LoginPage: Component = () => {
     setLoading(true);
     logger.event('login.submit', { hasEmail: !!email(), hasPassword: !!password() });
     try {
-      const user = await api.post<{ id: string; email: string }>('/api/auth/login', {
-        email: email(),
-        password: password(),
-      });
+      const { data: user } = await login({ body: { email: email(), password: password() } });
       setUser(user);
       logger.event('login.success');
       logger.navigation('/');

@@ -4,13 +4,12 @@ import { ErrorBoundary, For, Suspense, createResource } from 'solid-js';
 import { topStoriesRoute } from '@repo/shared';
 
 import { createApiCall } from '../../../common/libs/api';
-import { useI18n } from '../../../common/libs/i18n';
-
-const fetchTopStories = createApiCall(topStoriesRoute);
+import { format, useI18n } from '../../../common/libs/i18n';
 import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
 
 const NewsPage: Component = () => {
   const { t } = useI18n();
+  const fetchTopStories = createApiCall(topStoriesRoute);
   const [response] = createResource(() => fetchTopStories());
   const stories = () => response()?.data ?? [];
 
@@ -36,10 +35,10 @@ const NewsPage: Component = () => {
                       {story.title}
                     </a>
                     <div class={meta}>
-                      <span>{t().pages.news.score(story.score)}</span>
-                      <span>{t().pages.news.by(story.by)}</span>
+                      <span>{format(t().pages.news.score, { n: story.score })}</span>
+                      <span>{format(t().pages.news.by, { user: story.by })}</span>
                       <a href={hnItemUrl(story.id)} target="_blank" rel="noopener noreferrer">
-                        {t().pages.news.comments(story.descendants ?? 0)}
+                        {format(t().pages.news.comments, { n: story.descendants ?? 0 })}
                       </a>
                     </div>
                   </div>

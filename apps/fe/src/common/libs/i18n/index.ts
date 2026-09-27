@@ -1,24 +1,27 @@
-import { createContext, useContext } from 'solid-js';
+import { createContext, createResource, useContext } from 'solid-js';
 
-import { en } from './locales/en';
-import type { Translations } from './locales/en';
-import { ru } from './locales/ru';
-import { ua } from './locales/ua';
+import en from './locales/en.json';
 
-export type { Translations };
+export type Translations = typeof en;
+export { format } from './format';
 
 export const SUPPORTED_LOCALES = ['en', 'ua', 'ru'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
-const localeMap: Record<Locale, Translations> = { en, ua, ru };
+const localeLoaders: Record<Locale, () => Promise<Translations>> = {
+  en: async () => en,
+  ua: () => import('./locales/ua.json').then((m) => m.default as Translations),
+  ru: () => import('./locales/ru.json').then((m) => m.default as Translations),
+};
 
-export function createI18nStore(getLocale: () => Locale) {
+export const createI18nStore = (getLocale: () => Locale) => {
+  const [translations] = createResource(getLocale, (locale) => localeLoaders[locale]());
   return {
     locale: getLocale,
-    t: () => localeMap[getLocale()],
+    t: () => translations() ?? en,
   };
-}
+};
 
 export type I18nStore = ReturnType<typeof createI18nStore>;
 

@@ -1,24 +1,25 @@
 import { http, HttpResponse } from 'msw';
+import { loginRoute } from '@repo/shared';
 
-const LOGIN_URL = '*/api/auth/login';
+const url = `*${loginRoute.url}`;
 
-export const loginSuccess = http.post(LOGIN_URL, () =>
-  HttpResponse.json({ id: '1', email: 'user@example.com' }),
+export const loginSuccess = http.post(url, () =>
+  HttpResponse.json({ data: { id: '1', email: 'user@example.com' } }),
 );
 
-export const loginUnauthorized = http.post(LOGIN_URL, () =>
+export const loginUnauthorized = http.post(url, () =>
   HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 }),
 );
 
-export const loginServerError = http.post(LOGIN_URL, () =>
+export const loginServerError = http.post(url, () =>
   HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 }),
 );
 
-export const loginNetworkError = http.post(LOGIN_URL, () => HttpResponse.error());
+export const loginNetworkError = http.post(url, () => HttpResponse.error());
 
-export const loginSlow = http.post(LOGIN_URL, async () => {
+export const loginSlow = http.post(url, async () => {
   await new Promise<void>((resolve) => setTimeout(resolve, 60_000));
-  return HttpResponse.json({ id: '1', email: 'user@example.com' });
+  return HttpResponse.json({ data: { id: '1', email: 'user@example.com' } });
 });
 
 export const authHandlers = [loginSuccess];

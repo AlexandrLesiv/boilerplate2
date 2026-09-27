@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "home": "Home",
+    "news": "News",
+    "login": "Login"
+  },
+  "pages": {
+    "news": {
+      "title": "Hacker News",
+      "description": "Top stories from Hacker News",
+      "loading": "Loading stories…",
+      "score": "{n} points",
+      "by": "by {user}",
+      "comments": "{n} comments"
+    },
+    "home": {
+      "title": "Home",
+      "welcomeAnon": "Welcome! Please log in.",
+      "welcomeUser": "Welcome, {email}!"
+    },
+    "login": {
+      "title": "Login",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submitBtn": "Log in",
+      "submittingBtn": "Logging in…",
+      "errorInvalidCredentials": "Invalid email or password"
+    }
+  }
+}

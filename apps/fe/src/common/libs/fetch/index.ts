@@ -1,38 +1,118 @@
+import { createContext, useContext } from 'solid-js';
+import type { RouteSchema, SharedApiRoute } from '@repo/shared';
+import { type Static, type TSchema } from '@sinclair/typebox';
+
 import { apiBaseUrl } from '../../constants/environment';
 import { logger } from '../logger';
+import type { ApiConfig } from './config';
 
-interface RequestOptions {
-  signal?: AbortSignal;
-  headers?: Record<string, string>;
-}
+export type { ApiConfig } from './config';
+export type DownloadProgress = { loaded: number; total: number | null };
 
-async function request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
-  const t0 = performance.now();
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal: options?.signal,
-  });
+type CallOptions<S extends RouteSchema> =
+  (S['querystring'] extends TSchema ? { querystring: Static<S['querystring']> } : { querystring?: never }) &
+  (S['body'] extends TSchema ? { body: Static<S['body']> } : { body?: never }) &
+  (S['params'] extends TSchema ? { params: Static<S['params']> } : { params?: never }) & {
+    signal?: AbortSignal;
+    onDownloadProgress?: (progress: DownloadProgress) => void;
+  };
 
-  const durationMs = performance.now() - t0;
+type RouteResponse<S extends RouteSchema> = S['response'] extends { 200: TSchema }
+  ? Static<S['response'][200]>
+  : unknown;
 
-  if (!response.ok) {
-    logger.apiError(method, path, response.status, response.statusText);
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+const buildRouteUrl = (
+  url: string,
+  params?: Record<string, unknown>,
+  querystring?: Record<string, unknown>,
+): string => {
+  const path = params
+    ? url.replace(/:([^/]+)/g, (_, key: string) => encodeURIComponent(String(params[key] ?? '')))
+    : url;
+  const full = new URL(`${apiBaseUrl}${path}`);
+  if (querystring) {
+    for (const [key, value] of Object.entries(querystring)) {
+      if (value !== undefined && value !== null) full.searchParams.set(key, String(value));
+    }
   }
+  return full.toString();
+};
 
-  logger.perf(`api.${method.toLowerCase()}.${path}`, durationMs);
-  return response.json() as Promise<T>;
-}
+const consumeBody = async <T>(response: Response, onProgress?: (p: DownloadProgress) => void): Promise<T> => {
+  if (!onProgress || !response.body) return response.json() as Promise<T>;
+  const contentLength = response.headers.get('Content-Length');
+  const total = contentLength !== null ? Number(contentLength) : null;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    loaded += value.length;
+    text += decoder.decode(value, { stream: true });
+    onProgress({ loaded, total });
+  }
+  text += decoder.decode();
+  return JSON.parse(text) as T;
+};
 
-export const api = {
-  get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, undefined, options),
-  post: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>('POST', path, body, options),
-  put: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>('PUT', path, body, options),
-  patch: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>('PATCH', path, body, options),
-  delete: <T>(path: string, options?: RequestOptions) => request<T>('DELETE', path, undefined, options),
+export const createApi = ({ getLocale, getToken }: ApiConfig = {}) => {
+  const buildHeaders = (hasBody: boolean, extra?: Record<string, string>): Record<string, string> => {
+    const headers: Record<string, string> = {};
+    if (hasBody) headers['Content-Type'] = 'application/json';
+    const locale = getLocale?.();
+    if (locale) headers['Accept-Language'] = locale;
+    const token = getToken?.();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return { ...headers, ...extra };
+  };
+
+  const request = async <T>(
+    method: string,
+    url: string,
+    body?: unknown,
+    options?: { signal?: AbortSignal; headers?: Record<string, string>; onDownloadProgress?: (p: DownloadProgress) => void },
+  ): Promise<T> => {
+    const hasBody = body !== undefined;
+    const t0 = performance.now();
+    const response = await fetch(url, {
+      method,
+      headers: buildHeaders(hasBody, options?.headers),
+      body: hasBody ? JSON.stringify(body) : undefined,
+      signal: options?.signal,
+    });
+    const durationMs = performance.now() - t0;
+    if (!response.ok) {
+      logger.apiError(method, url, response.status, response.statusText);
+      throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    }
+    logger.perf(`api.${method.toLowerCase()}.${url}`, durationMs);
+    return consumeBody<T>(response, options?.onDownloadProgress);
+  };
+
+  const call = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
+    (options?: CallOptions<S>): Promise<RouteResponse<S>> =>
+      request<RouteResponse<S>>(
+        route.method,
+        buildRouteUrl(
+          route.url,
+          options?.params as Record<string, unknown> | undefined,
+          options?.querystring as Record<string, unknown> | undefined,
+        ),
+        options?.body,
+        { signal: options?.signal, onDownloadProgress: options?.onDownloadProgress },
+      );
+
+  return { call };
+};
+
+export type Api = ReturnType<typeof createApi>;
+
+export const ApiContext = createContext<Api>();
+
+export const useApi = (): Api => {
+  const ctx = useContext(ApiContext);
+  if (!ctx) throw new Error('useApi must be used within ApiContext.Provider');
+  return ctx;
 };
