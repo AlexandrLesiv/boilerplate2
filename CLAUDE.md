@@ -51,6 +51,23 @@ pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 - See `.claude/agents/story-writer.md` for the required story set per component type
 - See `.claude/agents/storybook-a11y.md` for the a11y review process
 
+## Accessibility
+
+A11y is not a post-hoc audit — it is part of authoring. Before writing any interactive component:
+
+1. **Pick the right element first.** Use `<button>` for actions, `<a href>` for navigation, `<form onSubmit>` for forms. Avoid `<div onClick>`.
+2. **Name every interactive element.** Visible text, `aria-label`, or `<label for>`. Placeholders do not count as labels.
+3. **Plan keyboard interaction.** Tab to focus, Enter/Space to activate, Escape to dismiss. Custom widgets (tabs, comboboxes) need arrow-key support.
+4. **Communicate dynamic state.** `role="alert"` for errors that appear, `aria-expanded` + `aria-controls` for disclosures, `aria-busy` for loading regions.
+
+Use the `storybook-a11y` agent (`.claude/agents/storybook-a11y.md`) in two ways:
+- **Before writing**: ask it for the a11y design checklist for the component you're about to build
+- **After writing**: ask it to audit the component + stories and fix violations
+
+Once violations are resolved, promote stories to `a11y: { test: 'error' }` in their parameters — this turns the Storybook a11y addon from a warning into a failing test.
+
+The `storybook-a11y` agent uses the Playwright MCP browser to snapshot the ARIA tree and verify keyboard navigation in the live Storybook. Make sure Storybook is running before invoking it in audit mode.
+
 ## Running locally
 
 ```sh

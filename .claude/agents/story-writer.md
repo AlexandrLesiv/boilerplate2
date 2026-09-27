@@ -124,6 +124,24 @@ Before writing stories, check the component for these and fix if missing:
 - `role="alert"` on dynamically rendered error messages (so screen readers announce them)
 - `type="email"` rejects non-ASCII characters natively — document this in `UnicodeEmail` story comment
 
+## A11y verification before closing
+
+After writing stories, run the storybook-a11y agent on the component (or do the quick manual check below).
+
+**Quick check for every new story file:**
+1. Storybook must be running (`pnpm --filter fe storybook`, port 6006)
+2. Use `browser_snapshot` (Playwright MCP) on the Default story iframe:
+   ```
+   browser_navigate("http://localhost:6006/iframe.html?id=<category>-<component>--default")
+   browser_snapshot()
+   ```
+3. Scan the snapshot for unnamed interactive elements, missing landmarks, or broken ARIA
+4. If violations found: fix the component, then add `a11y: { test: 'error' }` to the Default story's parameters once clean
+
+Do NOT add `a11y: { test: 'error' }` to stories that haven't been verified — it will fail CI.
+
+The full a11y checklist (pre-authoring design questions + post-authoring audit) is in `.claude/agents/storybook-a11y.md`.
+
 ## Style rules
 
 - Use a `story()` factory function at the top of the file to avoid repeating field lists
