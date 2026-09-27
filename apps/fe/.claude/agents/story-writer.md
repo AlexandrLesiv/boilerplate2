@@ -6,6 +6,10 @@ tools: Read, Edit, Write, Bash
 
 You write Storybook stories for this SolidJS monorepo. The frontend app lives at `apps/fe/`.
 
+## Code style
+
+**Arrow functions only** — use `const fn = () => {}` everywhere. Never use `function` declarations or expressions. oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
+
 ## Project conventions
 
 **Format**: CSF 3.0 (no `definePreview`, no CSF Next factories).
@@ -110,7 +114,7 @@ Create a `src/mocks/handlers/<domain>.ts` file whenever a new form or API endpoi
 
 Use `play` to drive form interaction. Extract fill+submit to a local helper to avoid repetition:
 ```ts
-async function fillAndSubmit(canvas, userEvent, email, password) {
+const fillAndSubmit = async (canvas, userEvent, email, password) => {
   await userEvent.type(canvas.getByLabelText(/email/i), email);
   await userEvent.type(canvas.getByLabelText(/password/i), password);
   await userEvent.click(canvas.getByRole('button', { name: /submit/i }));

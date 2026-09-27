@@ -7,6 +7,8 @@
   },
   "rules": {
     "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "prefer-arrow-callback": "error",
+    "arrow-body-style": ["error", "as-needed"],
     "solid/reactivity": "warn",
     "solid/no-innerhtml": "error",
     "solid/jsx-no-undef": "error",

@@ -5,6 +5,7 @@ import { useNavigate } from '@solidjs/router';
 
 import { api } from '../../../common/libs/fetch';
 import { useI18n } from '../../../common/libs/i18n';
+import { useLogger } from '../../../common/libs/logger';
 import { useRootStore } from '../../../common/libs/stores/root';
 import { AppButton } from '../../components/Button/AppButton';
 import { container, title, form, fieldGroup, input, errorText } from './styles.css';
@@ -13,6 +14,7 @@ const LoginPage: Component = () => {
   const navigate = useNavigate();
   const { setUser, setLoading, state } = useRootStore();
   const { t } = useI18n();
+  const logger = useLogger();
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [error, setError] = createSignal<string | null>(null);
@@ -21,14 +23,18 @@ const LoginPage: Component = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    logger.event('login.submit', { hasEmail: !!email(), hasPassword: !!password() });
     try {
       const user = await api.post<{ id: string; email: string }>('/api/auth/login', {
         email: email(),
         password: password(),
       });
       setUser(user);
+      logger.event('login.success');
+      logger.navigation('/');
       void navigate('/');
-    } catch {
+    } catch (err) {
+      logger.error('login.failed', { reason: String(err) });
       setError(t().pages.login.errorInvalidCredentials);
     } finally {
       setLoading(false);

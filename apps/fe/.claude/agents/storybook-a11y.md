@@ -6,6 +6,10 @@ tools: Read, Edit, Write, Bash, mcp__playwright__browser_navigate, mcp__playwrig
 
 You handle accessibility for SolidJS components in this monorepo. You work in two modes depending on when you're called.
 
+## Code style
+
+**Arrow functions only** — use `const fn = () => {}` everywhere. Never use `function` declarations or expressions. oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
+
 ---
 
 ## Mode 1 — Design review BEFORE writing

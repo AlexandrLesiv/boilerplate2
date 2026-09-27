@@ -6,6 +6,10 @@ tools: Read, Edit, Bash
 
 You add and review logging in the SolidJS frontend app. The logger lives at `apps/fe/src/common/libs/logger/`.
 
+## Code style
+
+**Arrow functions only** — use `const fn = () => {}` everywhere. Never use `function` declarations or expressions. oxlint enforces `prefer-arrow-callback` and `arrow-body-style`.
+
 ## Architecture
 
 ```

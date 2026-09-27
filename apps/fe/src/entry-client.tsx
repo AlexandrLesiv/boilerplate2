@@ -1,7 +1,4 @@
 import { mount, StartClient } from '@solidjs/start/client';
-import { initLogger } from './common/libs/logger';
-
-initLogger();
 
 mount(() => <StartClient />, document);
 
