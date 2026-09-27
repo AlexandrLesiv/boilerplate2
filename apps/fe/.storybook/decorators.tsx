@@ -7,7 +7,6 @@ import { A, MemoryRouter, Route, useParams } from '@solidjs/router';
 import { generalTheme } from '../src/assets/styles/themes.css';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
 import type { Locale } from '../src/common/libs/i18n';
-import { ApiContext, createApi } from '../src/common/libs/fetch';
 import { LoggerContext, createLogger } from '../src/common/libs/logger';
 import { RootStoreContext, createRootStore } from '../src/common/libs/stores/root';
 import { LocaleSwitcher } from '../src/views/components/LocaleSwitcher/LocaleSwitcher';
@@ -37,20 +36,17 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
   const store = createRootStore();
   const initialUser = untrack(() => props.user);
   if (initialUser) store.setUser(initialUser);
-  const api = createApi();
   const i18n = createI18nStore(() => DEFAULT_LOCALE);
   const logger = createLogger();
 
   return (
     <MetaProvider>
       <div class={generalTheme}>
-        <ApiContext.Provider value={api}>
-          <LoggerContext.Provider value={logger}>
-            <RootStoreContext.Provider value={store}>
-              <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>
-            </RootStoreContext.Provider>
-          </LoggerContext.Provider>
-        </ApiContext.Provider>
+        <LoggerContext.Provider value={logger}>
+          <RootStoreContext.Provider value={store}>
+            <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>
+          </RootStoreContext.Provider>
+        </LoggerContext.Provider>
       </div>
     </MetaProvider>
   );

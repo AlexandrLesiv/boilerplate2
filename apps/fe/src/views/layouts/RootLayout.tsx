@@ -4,8 +4,7 @@ import { For, Show, Suspense, createEffect } from 'solid-js';
 import { Link, Meta, Title } from '@solidjs/meta';
 import { A, useCurrentMatches, useLocation, useParams } from '@solidjs/router';
 
-import { ApiContext, createApi } from '../../common/libs/fetch';
-import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../../common/libs/i18n';
+import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromParams } from '../../common/libs/i18n';
 import type { Locale } from '../../common/libs/i18n';
 import type { AppRouteInfo } from '../../common/libs/router';
 import { JsonLd } from '../../common/libs/seo/JsonLd';
@@ -16,11 +15,10 @@ const RootLayout: Component<ParentProps> = (props) => {
   const params = useParams<{ locale?: string }>();
   const location = useLocation();
   const matches = useCurrentMatches();
-  const locale = () => (params.locale as Locale | undefined) ?? DEFAULT_LOCALE;
+  const locale = () => localeFromParams(params);
   createEffect(() => {
     document.documentElement.lang = locale();
   });
-  const api = createApi({ getLocale: locale });
   const i18n = createI18nStore(locale);
   const pfx = () => (params.locale ? `/${params.locale}` : '');
 
@@ -39,7 +37,6 @@ const RootLayout: Component<ParentProps> = (props) => {
   };
 
   return (
-    <ApiContext.Provider value={api}>
     <I18nContext.Provider value={i18n}>
       <Link rel="manifest" href="/manifest.json" />
       <Meta name="theme-color" content="#3b82f6" />
@@ -81,7 +78,6 @@ const RootLayout: Component<ParentProps> = (props) => {
         </main>
       </div>
     </I18nContext.Provider>
-    </ApiContext.Provider>
   );
 };
 

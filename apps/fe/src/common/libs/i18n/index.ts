@@ -1,5 +1,6 @@
-import { createContext, createResource, useContext } from 'solid-js';
+import { createContext, useContext } from 'solid-js';
 
+import { cache, createAsync } from '@solidjs/router';
 import en from './locales/en.json';
 
 export type Translations = typeof en;
@@ -15,8 +16,13 @@ const localeLoaders: Record<Locale, () => Promise<Translations>> = {
   ru: () => import('./locales/ru.json').then((m) => m.default as Translations),
 };
 
+export const loadLocale = cache((locale: Locale) => localeLoaders[locale](), 'i18n:locale');
+
+export const localeFromParams = (params: { locale?: string }): Locale =>
+  (params.locale as Locale | undefined) ?? DEFAULT_LOCALE;
+
 export const createI18nStore = (getLocale: () => Locale) => {
-  const [translations] = createResource(getLocale, (locale) => localeLoaders[locale]());
+  const translations = createAsync(() => loadLocale(getLocale()), { initialValue: en });
   return {
     locale: getLocale,
     t: () => translations() ?? en,

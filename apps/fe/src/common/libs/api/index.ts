@@ -1,11 +1,25 @@
+import { cache } from '@solidjs/router';
 import type { RouteSchema, SharedApiRoute } from '@repo/shared';
 
-import { useApi } from '../fetch';
+import { useI18n } from '../i18n';
+import { apiFetch, type CallOptions } from '../fetch';
 
-export { createApi, useApi, ApiContext } from '../fetch';
-export type { Api, ApiConfig } from '../fetch';
+export { apiFetch } from '../fetch';
+export type { CallOptions, RouteResponse } from '../fetch';
 
-export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) => {
-  const api = useApi();
-  return api.call(route);
+// For GET requests — cache-based, preload-compatible.
+// Call at module level in route files; use with createAsync in components.
+// Locale is passed by the caller (from params in preload, from i18n store in components).
+export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
+  cache(
+    (locale?: string, options?: Omit<CallOptions<S>, 'signal'>) =>
+      apiFetch(route, locale, options as CallOptions<S>),
+    `api:${route.method}:${route.url}`,
+  );
+
+// For mutations (POST/PUT/DELETE) — reads locale from i18n context, not cached.
+// Call inside a component; the returned function is used in event handlers.
+export const createMutation = <S extends RouteSchema>(route: SharedApiRoute<S>) => {
+  const { locale } = useI18n();
+  return (options?: CallOptions<S>) => apiFetch(route, locale(), options);
 };

@@ -4,7 +4,7 @@ import { createSignal, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { loginRoute } from '@repo/shared';
 
-import { createApiCall } from '../../../common/libs/api';
+import { createMutation } from '../../../common/libs/api';
 import { useI18n } from '../../../common/libs/i18n';
 import { useLogger } from '../../../common/libs/logger';
 import { useRootStore } from '../../../common/libs/stores/root';
@@ -15,7 +15,7 @@ const LoginPage: Component = () => {
   const navigate = useNavigate();
   const { setUser, setLoading, state } = useRootStore();
   const { t } = useI18n();
-  const login = createApiCall(loginRoute);
+  const login = createMutation(loginRoute);
   const logger = useLogger();
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
