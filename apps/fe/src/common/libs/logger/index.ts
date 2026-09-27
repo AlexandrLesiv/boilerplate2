@@ -1,7 +1,11 @@
-import type { LogCategory, LogEntry, LogLevel } from './types';
+import { createContext, useContext } from 'solid-js';
+
+import type { LogCategory, LogEntry, Logger, LogLevel } from './types';
 import { dbAppend, dbClear, dbRead, dbTrim } from './db';
 
-export type { LogEntry, LogLevel, LogCategory } from './types';
+export type { LogEntry, Logger, LogLevel, LogCategory } from './types';
+
+// ─── buffer + flush ───────────────────────────────────────────────────────────
 
 const FLUSH_INTERVAL_MS = 10_000;
 const FLUSH_BUFFER_SIZE = 100;
@@ -52,36 +56,42 @@ function push(level: LogLevel, category: LogCategory, message: string, data?: Re
   else scheduleFlush();
 }
 
-export const logger = {
-  /** Only emits in dev mode — stripped from prod builds. */
-  debug: (message: string, data?: Record<string, unknown>) => {
-    if (import.meta.env.DEV) push('debug', 'custom', message, data);
-  },
-  info: (message: string, data?: Record<string, unknown>) => push('info', 'custom', message, data),
-  warn: (message: string, data?: Record<string, unknown>) => push('warn', 'custom', message, data),
-  error: (message: string, data?: Record<string, unknown>) => push('error', 'custom', message, data),
-  /** Track a user action (click, submit, toggle…). */
-  event: (name: string, data?: Record<string, unknown>) => push('info', 'user-action', name, data),
-  /** Track a measured duration. `name` should be a stable identifier like "api.topStories". */
-  perf: (name: string, durationMs: number, data?: Record<string, unknown>) =>
-    push('info', 'performance', name, { ...data, durationMs }),
-  /** Called automatically by the API helpers — not usually needed in components. */
-  apiError: (method: string, url: string, status: number, message?: string) =>
+// ─── public logger singleton ──────────────────────────────────────────────────
+
+export const logger: Logger = {
+  log: (message, data) => push('log', 'custom', message, data),
+  info: (message, data) => push('info', 'custom', message, data),
+  warn: (message, data) => push('warn', 'custom', message, data),
+  error: (message, data) => push('error', 'custom', message, data),
+  event: (name, data) => push('info', 'user-action', name, data),
+  perf: (name, durationMs, data) => push('info', 'performance', name, { ...data, durationMs }),
+  apiError: (method, url, status, message) =>
     push('error', 'api', `${method} ${url} → ${status}`, { method, url, status, message }),
+  navigation: (to) => push('info', 'navigation', 'navigate', { to }),
 };
 
+// ─── context (DI for components) ─────────────────────────────────────────────
+
+export const LoggerContext = createContext<Logger>();
+
+export const useLogger = (): Logger => {
+  const ctx = useContext(LoggerContext);
+  if (!ctx) throw new Error('useLogger must be used within LoggerContext.Provider');
+  return ctx;
+};
+
+// ─── init (call once in entry-client.tsx) ─────────────────────────────────────
+
 /**
- * Call once in entry-client.tsx. Sets up global error capture, flush-on-hide,
- * IDB trim, and the dev-only window.__logger console helpers.
+ * Wires up global error capture, flush-on-hide, IDB trim, and dev helpers.
+ * Must be called before mount() in entry-client.tsx.
  */
 export function initLogger(): void {
-  // Flush buffer when tab is hidden or the page is being unloaded
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void flush();
   });
   window.addEventListener('pagehide', () => void flush());
 
-  // Capture uncaught JS errors and unhandled promise rejections
   window.addEventListener('error', (e) => {
     push('error', 'error', e.message, {
       filename: e.filename,
@@ -90,6 +100,7 @@ export function initLogger(): void {
       stack: (e.error as Error | undefined)?.stack,
     });
   });
+
   window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
     const reason = e.reason instanceof Error ? e.reason.message : String(e.reason);
     push('error', 'error', `Unhandled rejection: ${reason}`, {
@@ -97,7 +108,6 @@ export function initLogger(): void {
     });
   });
 
-  // Trim old entries once per session (async, non-blocking)
   void dbTrim();
 
   if (import.meta.env.DEV) {

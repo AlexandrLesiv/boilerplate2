@@ -10,9 +10,9 @@ You add and review logging in the SolidJS frontend app. The logger lives at `app
 
 ```
 logger/
-  types.ts     LogEntry, LogLevel, LogCategory
+  types.ts     LogEntry, LogLevel, LogCategory, Logger interface
   db.ts        idb wrapper — dbAppend, dbRead, dbClear, dbTrim
-  index.ts     public API (logger.*) + initLogger()
+  index.ts     logger singleton, LoggerContext, useLogger, initLogger()
 ```
 
 **Storage**: IndexedDB via the `idb` library. Database name: `app-logs`, object store: `entries`.
@@ -22,19 +22,38 @@ logger/
 
 **Session**: `sessionId` is a UUID stored in `sessionStorage` under `log:session`. It survives navigation within a tab but is new for each tab and after a hard reload.
 
+**DI**: `LoggerContext.Provider` wraps the app in `AppProvider.tsx`. Components access the logger via `useLogger()`.
+
 ## Public API
+
+Inside components — use the hook:
+
+```ts
+import { useLogger } from '@/common/libs/logger';
+
+const MyComponent = () => {
+  const logger = useLogger();
+  // ...
+};
+```
+
+Outside components (API helpers, module scope) — use the singleton:
 
 ```ts
 import { logger } from '@/common/libs/logger';
+```
 
-logger.debug(message, data?)        // dev-only — stripped from prod
-logger.info(message, data?)         // general informational
-logger.warn(message, data?)         // recoverable anomaly
-logger.error(message, data?)        // non-fatal error (component caught it)
-logger.event(name, data?)           // user action (click, submit, toggle)
+Available methods on both:
+
+```ts
+logger.log(message, data?)           // low-level / verbose
+logger.info(message, data?)          // informational
+logger.warn(message, data?)          // recoverable anomaly
+logger.error(message, data?)         // non-fatal error (component caught it)
+logger.event(name, data?)            // user action (click, submit, toggle)
 logger.perf(name, durationMs, data?) // measured duration
-logger.apiError(method, url, status, message?)  // called automatically by api helpers
-logger.navigation(to)               // call when routing programmatically
+logger.apiError(method, url, status, message?) // auto-called by API helpers — rarely needed in components
+logger.navigation(to)                // call when routing programmatically
 ```
 
 `data` must be a flat `Record<string, unknown>`. Never put nested objects with circular refs or large blobs in `data`.
@@ -44,6 +63,7 @@ logger.navigation(to)               // call when routing programmatically
 ### Always add on errors
 Add `logger.error()` in every `catch` block that handles a user-visible failure:
 ```ts
+const logger = useLogger();
 try {
   await doSomething();
 } catch (err) {
@@ -55,6 +75,7 @@ try {
 ### Add on meaningful user actions
 Add `logger.event()` on form submissions, navigation triggers, and significant state changes:
 ```ts
+const logger = useLogger();
 const handleSubmit = async (e: SubmitEvent) => {
   e.preventDefault();
   logger.event('login.submit', { hasEmail: !!email() });
