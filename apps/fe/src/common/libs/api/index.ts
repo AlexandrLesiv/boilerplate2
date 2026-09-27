@@ -2,6 +2,7 @@ import type { RouteSchema, SharedApiRoute } from '@repo/shared';
 import { type Static, type TSchema } from '@sinclair/typebox';
 
 import { apiBaseUrl } from '../../constants/environment';
+import { logger } from '../logger';
 
 type CallOptions<S extends RouteSchema> = (S['querystring'] extends TSchema
   ? { querystring: Static<S['querystring']> }
@@ -48,6 +49,7 @@ export function createApiCall<S extends RouteSchema>(route: SharedApiRoute<S>) {
     );
 
     const hasBody = options?.body !== undefined;
+    const t0 = performance.now();
 
     const response = await fetch(url, {
       method: route.method,
@@ -56,10 +58,14 @@ export function createApiCall<S extends RouteSchema>(route: SharedApiRoute<S>) {
       body: hasBody ? JSON.stringify(options?.body) : undefined,
     });
 
+    const durationMs = performance.now() - t0;
+
     if (!response.ok) {
+      logger.apiError(route.method, route.url, response.status, response.statusText);
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
 
+    logger.perf(`api.${route.method.toLowerCase()}.${route.url}`, durationMs);
     return response.json() as Promise<RouteResponse<S>>;
   };
 }

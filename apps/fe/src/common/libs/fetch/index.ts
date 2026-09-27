@@ -1,4 +1,5 @@
 import { apiBaseUrl } from '../../constants/environment';
+import { logger } from '../logger';
 
 interface RequestOptions {
   signal?: AbortSignal;
@@ -6,6 +7,7 @@ interface RequestOptions {
 }
 
 async function request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+  const t0 = performance.now();
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
     headers: {
@@ -16,10 +18,14 @@ async function request<T>(method: string, path: string, body?: unknown, options?
     signal: options?.signal,
   });
 
+  const durationMs = performance.now() - t0;
+
   if (!response.ok) {
+    logger.apiError(method, path, response.status, response.statusText);
     throw new Error(`Request failed: ${response.status} ${response.statusText}`);
   }
 
+  logger.perf(`api.${method.toLowerCase()}.${path}`, durationMs);
   return response.json() as Promise<T>;
 }
 
