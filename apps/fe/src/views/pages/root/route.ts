@@ -1,4 +1,4 @@
-import { defineRoute } from '../../../common/libs/router';
+import { defineJsonLd, defineRoute } from '../../../common/libs/router';
 import Root from './Root';
 
 export const rootRoute = defineRoute({
@@ -8,6 +8,7 @@ export const rootRoute = defineRoute({
     meta: (_, t) => ({
       title: t.pages.home.title,
       description: t.pages.home.welcomeAnon,
+      schema: defineJsonLd({ '@type': 'WebSite', name: t.pages.home.title }),
     }),
   },
 });

@@ -8,6 +8,7 @@ import { ApiContext, createApi } from '../../common/libs/fetch';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../../common/libs/i18n';
 import type { Locale } from '../../common/libs/i18n';
 import type { AppRouteInfo } from '../../common/libs/router';
+import { JsonLd } from '../../common/libs/seo/JsonLd';
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
 import { header, headerLeft, main, nav } from './styles.css';
 
@@ -56,6 +57,9 @@ const RootLayout: Component<ParentProps> = (props) => {
           <Meta name="robots" content={routeMeta()!.robots!} />
         </Show>
         <Link rel="canonical" href={routeMeta()?.canonical ?? pagePath()} />
+        <Show when={routeMeta()?.schema}>
+          {(schema) => <JsonLd schema={schema()} />}
+        </Show>
       </Suspense>
 
       <div>

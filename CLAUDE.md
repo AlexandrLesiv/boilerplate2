@@ -88,6 +88,42 @@ pnpm --filter fe storybook
 pnpm --filter fe typecheck && pnpm --filter @repo/shared typecheck
 ```
 
+## SEO requirements
+
+Every routable page **must** define both meta and structured data in its `route.ts` file via `defineRoute`. Omitting either is a bug.
+
+**Meta** (in `info.meta`):
+- `title` — required, concise, matches page content
+- `description` — required for all public pages, 120–160 characters
+- `robots` — set to `'noindex'` for auth-gated or utility pages (e.g. `/login`)
+
+**Structured data** (JSON-LD, in `info.meta` → `schema`):
+- Use `defineJsonLd` from `apps/fe/src/common/libs/router` — never write raw `{ '@context': ... }` objects
+- Choose the most specific schema.org `@type` for the page content — e.g. `Article`, `CollectionPage`, `WebSite`, `BreadcrumbList`
+- TypeScript (via `schema-dts`) will reject invalid property names and values — fix errors rather than casting
+- The script tag is injected into `<head>` automatically via `MetaProvider`; nothing extra needed in the component
+
+Example:
+```ts
+import { defineJsonLd, defineRoute } from '../../../common/libs/router';
+
+export const exampleRoute = defineRoute({
+  path: '/example',
+  component: ExamplePage,
+  info: {
+    meta: (_, t) => ({
+      title: t.pages.example.title,
+      description: t.pages.example.description,
+      schema: defineJsonLd({
+        '@type': 'WebPage',
+        name: t.pages.example.title,
+        description: t.pages.example.description,
+      }),
+    }),
+  },
+});
+```
+
 ## Adding a new API endpoint
 
 1. Define the shared route in `packages/shared/src/routes/<domain>.ts` using `defineSharedApiRoute`

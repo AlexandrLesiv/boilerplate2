@@ -1,4 +1,4 @@
-import { defineRoute } from '../../../common/libs/router';
+import { defineJsonLd, defineRoute } from '../../../common/libs/router';
 import NewsPage from './NewsPage';
 
 export const newsRoute = defineRoute({
@@ -8,6 +8,11 @@ export const newsRoute = defineRoute({
     meta: (_, t) => ({
       title: t.pages.news.title,
       description: t.pages.news.description,
+      schema: defineJsonLd({
+        '@type': 'CollectionPage',
+        name: t.pages.news.title,
+        description: t.pages.news.description,
+      }),
     }),
   },
 });

@@ -1,12 +1,17 @@
 import type { Params, RouteDefinition } from '@solidjs/router';
 
+import type { JsonLdSchema } from '../seo/JsonLd';
 import type { Translations } from '../i18n';
+
+export type { JsonLdSchema } from '../seo/JsonLd';
+export { defineJsonLd } from '../seo/JsonLd';
 
 export type RouteMeta = {
   title: string;
   description?: string;
   robots?: string;
   canonical?: string;
+  schema?: JsonLdSchema | JsonLdSchema[];
 };
 
 export type AppRouteInfo<TData = undefined> = {
