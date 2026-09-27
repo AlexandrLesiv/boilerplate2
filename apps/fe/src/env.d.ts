@@ -14,3 +14,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare const __APP_VERSION__: string;
+declare const __APP_NAME__: string;
+declare const __GIT_HASH__: string;

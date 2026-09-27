@@ -1,3 +1,7 @@
+/// <reference types="vitest/config" />
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { solidStart } from '@solidjs/start/config';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
@@ -10,21 +14,35 @@ import { stripTypeboxPlugin } from './vite-plugins/strip-typebox.ts';
 import { versionedClientOutputPlugin } from './vite-plugins/versioned-client-output.ts';
 import { clientVisualizerPlugin } from './vite-plugins/visualizer.ts';
 
-/// <reference types="vitest/config" />
-import { readFileSync } from 'node:fs';
+const execAsync = promisify(exec);
 
-const { version } = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string };
+export default defineConfig(async () => {
+  const appVersion = process.env['npm_package_version'] ?? 'unknown';
+  const appName = process.env['npm_package_name'] ?? 'app';
 
-export default defineConfig({
+  let gitHash = 'unknown';
+  try {
+    const { stdout } = await execAsync('git rev-parse --short HEAD');
+    gitHash = stdout.trim();
+  } catch {
+    // not a git repo, shallow clone, or git unavailable
+  }
+
+  return {
   plugins: [
     vanillaExtractPlugin(),
     ...solidStart({ ssr: true, middleware: './src/middleware.ts' }),
     oxlint(),
     serviceWorkerPlugin(),
     stripTypeboxPlugin(),
-    versionedClientOutputPlugin(version),
+    versionedClientOutputPlugin(appVersion),
     ...clientVisualizerPlugin(),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __APP_NAME__: JSON.stringify(appName),
+    __GIT_HASH__: JSON.stringify(gitHash),
+  },
   css: {
     transformer: 'lightningcss',
   },
@@ -51,4 +69,5 @@ export default defineConfig({
       },
     ],
   },
+  };
 });

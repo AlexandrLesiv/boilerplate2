@@ -43,6 +43,13 @@ function scheduleFlush(): void {
 
 function push(level: LogLevel, category: LogCategory, message: string, data?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return; // SSR guard
+
+  if (import.meta.env.DEV) {
+    const consoleFn = level === 'log' ? console.debug : console[level];
+    if (data !== undefined) consoleFn(`[${category}] ${message}`, data);
+    else consoleFn(`[${category}] ${message}`);
+  }
+
   buffer.push({
     level,
     category,
@@ -69,6 +76,21 @@ export const logger: Logger = {
     push('error', 'api', `${method} ${url} → ${status}`, { method, url, status, message }),
   navigation: (to) => push('info', 'navigation', 'navigate', { to }),
 };
+
+// ─── public export function ───────────────────────────────────────────────────
+
+export async function exportLogs(opts?: { limit?: number; since?: number }): Promise<void> {
+  await flush();
+  const entries = await dbRead(opts);
+  const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {
+    href: url,
+    download: `logs-${new Date().toISOString()}.json`,
+  });
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── context (DI for components) ─────────────────────────────────────────────
 
@@ -110,22 +132,18 @@ export function initLogger(): void {
 
   void dbTrim();
 
+  logger.info('app.start', {
+    name: __APP_NAME__,
+    version: __APP_VERSION__,
+    gitHash: __GIT_HASH__,
+  });
+
   if (import.meta.env.DEV) {
     (window as unknown as Record<string, unknown>)['__logger'] = {
       read: (opts?: { limit?: number; since?: number }) => dbRead(opts),
       clear: () => dbClear(),
       flush: () => flush(),
-      export: async () => {
-        const entries = await dbRead();
-        const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
-        const a = Object.assign(document.createElement('a'), {
-          href: URL.createObjectURL(blob),
-          download: `logs-${new Date().toISOString()}.json`,
-        });
-        a.click();
-        URL.revokeObjectURL(a.href);
-      },
+      export: (opts?: { limit?: number; since?: number }) => exportLogs(opts),
     };
-    console.info('[logger] ready — window.__logger.read() | .clear() | .export()');
   }
 }
