@@ -1,3 +1,5 @@
+import { query } from '@solidjs/router';
+
 import { mswLoader } from 'msw-storybook-addon/csf3';
 import type { Preview } from 'storybook-solidjs-vite';
 
@@ -59,6 +61,15 @@ const BREAKPOINTS = {
 
 const preview: Preview = {
   loaders: [mswLoader()],
+  /**
+   * `query()` from @solidjs/router caches by `name + hashKey(args)` in a module-level
+   * Map that outlives a story switch. Within PRELOAD_TIMEOUT (5s) a cached entry is
+   * served without revalidating, so a story would render the *previous* story's data
+   * and never hit its own MSW handler. Reset the cache so every story starts cold.
+   */
+  beforeEach: () => {
+    query.clear();
+  },
   parameters: {
     msw: {
       handlers: hackernewsHandlers,

@@ -2,7 +2,7 @@ import type { JSX, ParentProps } from 'solid-js';
 import { untrack } from 'solid-js';
 
 import { MetaProvider } from '@solidjs/meta';
-import { MemoryRouter, Route } from '@solidjs/router';
+import { MemoryRouter, Route, createMemoryHistory } from '@solidjs/router';
 
 import { generalTheme } from '../src/assets/styles/themes.css';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
@@ -13,6 +13,10 @@ import RootLayout from '../src/views/layouts/RootLayout';
 
 type ProviderOptions = {
   user?: { id: string; email: string } | null;
+  /** Route pattern the story is mounted at. Set it when the component reads route params. */
+  path?: string;
+  /** Initial in-memory URL. Must match `path` so `useParams()` resolves. */
+  initialPath?: string;
 };
 
 type DecoratorFn = (Story: () => JSX.Element) => JSX.Element;
@@ -30,6 +34,14 @@ const solidDecorator =
     (decorator as unknown as Record<string, unknown>).__isJSX = true;
     return decorator;
   };
+
+/** In-memory history seeded with `initialPath`, so param-driven stories start on the right URL. */
+const createStoryHistory = (initialPath?: string) => {
+  if (!initialPath) return undefined;
+  const history = createMemoryHistory();
+  history.set({ value: initialPath, replace: true });
+  return history;
+};
 
 // Static providers that don't need router context.
 const AppProviders = (props: { children: JSX.Element; user?: { id: string; email: string } | null }) => {
@@ -56,11 +68,11 @@ const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
 };
 
 /** For component-level stories: contexts + router, no layout chrome. */
-export const withAppProviders = solidDecorator((Story, { user = null }) => (
+export const withAppProviders = solidDecorator((Story, { user = null, path = '/*', initialPath }) => (
   <AppProviders user={user}>
-    <MemoryRouter>
+    <MemoryRouter history={createStoryHistory(initialPath)}>
       <Route
-        path="/*"
+        path={path}
         component={() => (
           <WithI18n>
             <Story />
@@ -72,11 +84,11 @@ export const withAppProviders = solidDecorator((Story, { user = null }) => (
 ));
 
 /** For page-level stories: full app layout (RootLayout) so nav stays in sync with the real app. */
-export const withPageLayout = solidDecorator((Story, { user = null }) => (
+export const withPageLayout = solidDecorator((Story, { user = null, path = '/*', initialPath }) => (
   <AppProviders user={user}>
-    <MemoryRouter>
+    <MemoryRouter history={createStoryHistory(initialPath)}>
       <Route path="/:locale?" component={RootLayout} matchFilters={{ locale: [...SUPPORTED_LOCALES] }}>
-        <Route path="/*" component={() => <Story />} />
+        <Route path={path} component={() => <Story />} />
       </Route>
     </MemoryRouter>
   </AppProviders>
