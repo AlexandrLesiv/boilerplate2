@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 .env.local
+.playwright-mcp
 *.local
 
 storybook-static
