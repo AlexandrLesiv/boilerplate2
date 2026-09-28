@@ -31,10 +31,67 @@
       "submittingBtn": "Logging in…",
       "errorInvalidCredentials": "Invalid email or password"
     },
-    "notFound": {
-      "title": "Page not found",
-      "description": "This page doesn't exist or is no longer available.",
-      "backHome": "Back to home"
+    "errors": {
+      "400": {
+        "title": "Bad request",
+        "description": "The request was malformed, so the server could not process it."
+      },
+      "401": {
+        "title": "Sign in required",
+        "description": "You need to be signed in to view this page."
+      },
+      "403": {
+        "title": "Access denied",
+        "description": "You don't have permission to view this page."
+      },
+      "404": {
+        "title": "Page not found",
+        "description": "This page doesn't exist or is no longer available."
+      },
+      "408": {
+        "title": "Request timed out",
+        "description": "The request took too long. Please try again."
+      },
+      "429": {
+        "title": "Too many requests",
+        "description": "You've made too many requests. Wait a moment and try again."
+      },
+      "500": {
+        "title": "Something went wrong",
+        "description": "The server ran into an unexpected problem."
+      },
+      "501": {
+        "title": "Not implemented",
+        "description": "This feature isn't available yet."
+      },
+      "502": {
+        "title": "Bad gateway",
+        "description": "An upstream service returned an invalid response."
+      },
+      "503": {
+        "title": "Service unavailable",
+        "description": "The service is temporarily down. Please try again shortly."
+      },
+      "504": {
+        "title": "Gateway timeout",
+        "description": "An upstream service took too long to respond."
+      },
+      "offline": {
+        "title": "You appear to be offline",
+        "description": "We couldn't reach the server. Check your connection and try again."
+      },
+      "unknown": {
+        "title": "Unexpected error",
+        "description": "Something went wrong that we didn't anticipate."
+      },
+      "backHome": "Back to home",
+      "support": {
+        "prompt": "If this keeps happening, send us the diagnostic logs from this session.",
+        "sendLogs": "Send logs to developers"
+      }
     }
+  },
+  "common": {
+    "loading": "Loading…"
   }
 }

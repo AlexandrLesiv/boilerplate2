@@ -1,27 +1,27 @@
 import type { Component } from 'solid-js';
-import { ErrorBoundary, For, Suspense } from 'solid-js';
+import { For } from 'solid-js';
 
 import { createAsync } from '@solidjs/router';
 import { A } from '@solidjs/router';
 
 import { format, useI18n } from '../../../common/libs/i18n';
+import { DataBoundary } from '../../components/DataBoundary/DataBoundary';
 import { getTopStories } from './api';
-import { body, errorBox, item, list, meta, rank, titleLink } from './styles.css';
+import { body, item, list, meta, rank, titleLink } from './styles.css';
 
 const NewsPage: Component = () => {
   const { t } = useI18n();
   const response = createAsync(() => getTopStories());
-  const stories = () => response()?.data ?? [];
 
   const hnItemUrl = (id: number) => `https://news.ycombinator.com/item?id=${id}`;
 
   return (
     <div>
       <h1>{t().pages.news.title}</h1>
-      <ErrorBoundary fallback={(err) => <p class={errorBox}>{String(err)}</p>}>
-        <Suspense fallback={<p>{t().pages.news.loading}</p>}>
+      <DataBoundary result={response()} pending={<p>{t().pages.news.loading}</p>}>
+        {(page) => (
           <ol class={list}>
-            <For each={stories()}>
+            <For each={page.data}>
               {(story, i) => (
                 <li class={item}>
                   <span class={rank}>{i() + 1}.</span>
@@ -41,8 +41,8 @@ const NewsPage: Component = () => {
               )}
             </For>
           </ol>
-        </Suspense>
-      </ErrorBoundary>
+        )}
+      </DataBoundary>
     </div>
   );
 };

@@ -51,10 +51,3 @@ export const meta = style({
   gap: '0.75rem',
   flexWrap: 'wrap',
 });
-
-export const errorBox = style({
-  color: themeVars.color.error,
-  padding: '1rem',
-  border: `1px solid ${themeVars.color.error}`,
-  borderRadius: '0.375rem',
-});

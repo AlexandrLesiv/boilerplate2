@@ -24,6 +24,8 @@ type ProviderOptions = {
   path?: string;
   /** Initial in-memory URL. Must match `path` so `useParams()` resolves. */
   initialPath?: string;
+  /** Locale for component stories. `withPageLayout` derives it from the URL instead. */
+  locale?: Locale;
 };
 
 type DecoratorFn = (Story: () => JSX.Element) => JSX.Element;
@@ -82,13 +84,13 @@ const WithConfig = (props: ParentProps) => {
 };
 
 /** For component-level stories: contexts + router, no layout chrome. */
-export const withAppProviders = solidDecorator((Story, { user = null, path = '/*', initialPath }) => (
+export const withAppProviders = solidDecorator((Story, { user = null, path = '/*', initialPath, locale }) => (
   <AppProviders user={user}>
     <MemoryRouter history={createStoryHistory(initialPath)}>
       <Route
         path={path}
         component={() => (
-          <WithI18n>
+          <WithI18n locale={() => locale ?? DEFAULT_LOCALE}>
             <WithConfig>
               <Story />
             </WithConfig>
@@ -131,12 +133,17 @@ export interface FullAppProps {
  * `revalidate()` on the config query does not make the live `createAsync` re-request.
  */
 export const FullApp = (props: FullAppProps): JSX.Element => {
-  setClientConfigOverrides(props.features);
+  // untrack because reading once is the whole design: the keyed <Show> remounts this on every
+  // control change, so there is nothing here to react to.
+  const path = untrack(() => props.path) ?? '/';
+  const features = untrack(() => props.features);
+
+  setClientConfigOverrides(features);
   // The previous instance's cached config would otherwise be served to this one.
   query.clear();
 
   const history = createMemoryHistory();
-  history.set({ value: props.path ?? '/', replace: true });
+  history.set({ value: path, replace: true });
 
   return (
     <MetaProvider>
