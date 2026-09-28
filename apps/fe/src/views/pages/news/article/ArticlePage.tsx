@@ -15,26 +15,29 @@ const ArticlePage: Component = () => {
 
   return (
     <DataBoundary result={article()}>
-      {({ data: a }) => (
-        <div>
-          <Title>{a.title}</Title>
-          <h1>
-            <Show when={a.url} fallback={a.title}>
-              <a href={a.url} target="_blank" rel="noopener noreferrer">
-                {a.title}
-              </a>
-            </Show>
-          </h1>
+      {(res) => {
+        const a = () => res().data;
+        return (
           <div>
-            <span>{format(t().pages.news.score, { n: a.score })}</span>
-            {' · '}
-            <span>{format(t().pages.news.by, { user: a.by })}</span>
-            {' · '}
-            <span>{format(t().pages.news.comments, { n: a.descendants ?? 0 })}</span>
+            <Title>{a().title}</Title>
+            <h1>
+              <Show when={a().url} fallback={a().title}>
+                <a href={a().url} target="_blank" rel="noopener noreferrer">
+                  {a().title}
+                </a>
+              </Show>
+            </h1>
+            <div>
+              <span>{format(t().pages.news.score, { n: a().score })}</span>
+              {' · '}
+              <span>{format(t().pages.news.by, { user: a().by })}</span>
+              {' · '}
+              <span>{format(t().pages.news.comments, { n: a().descendants ?? 0 })}</span>
+            </div>
+            <A href="../">{t().pages.article.backToNews}</A>
           </div>
-          <A href="../">{t().pages.article.backToNews}</A>
-        </div>
-      )}
+        );
+      }}
     </DataBoundary>
   );
 };

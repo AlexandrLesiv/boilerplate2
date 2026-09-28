@@ -1,4 +1,5 @@
 import type { Component } from 'solid-js';
+import { For } from 'solid-js';
 
 import { A, useLocation, useParams } from '@solidjs/router';
 
@@ -15,15 +16,19 @@ export const LocaleSwitcher: Component = () => {
 
   return (
     <div class={container}>
-      {SUPPORTED_LOCALES.map((target) => (
-        <A
-          href={makeLocaleUrl(target)}
-          class={[localeLink, locale() === target ? localeLinkVariants.active : localeLinkVariants.inactive].join(' ')}
-          aria-current={locale() === target ? 'true' : undefined}
-        >
-          {target.toUpperCase()}
-        </A>
-      ))}
+      <For each={SUPPORTED_LOCALES}>
+        {(target) => (
+          <A
+            href={makeLocaleUrl(target)}
+            class={[localeLink, locale() === target ? localeLinkVariants.active : localeLinkVariants.inactive].join(
+              ' '
+            )}
+            aria-current={locale() === target ? 'true' : undefined}
+          >
+            {target.toUpperCase()}
+          </A>
+        )}
+      </For>
     </div>
   );
 };

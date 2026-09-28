@@ -21,7 +21,7 @@ const NewsPage: Component = () => {
       <DataBoundary result={response()} pending={<p>{t().pages.news.loading}</p>}>
         {(page) => (
           <ol class={list}>
-            <For each={page.data}>
+            <For each={page().data}>
               {(story, i) => (
                 <li class={item}>
                   <span class={rank}>{i() + 1}.</span>

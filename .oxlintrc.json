@@ -6,13 +6,29 @@
     "es2025": true
   },
   "rules": {
-    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ],
     "prefer-arrow-callback": "error",
     "arrow-body-style": ["error", "as-needed"],
-    "solid/reactivity": "warn",
+    "solid/reactivity": "error",
     "solid/no-innerhtml": "error",
     "solid/jsx-no-undef": "error",
-    "solid/no-array-handlers": "warn"
+    "solid/no-array-handlers": "warn",
+    "solid/no-destructure": "error",
+    "solid/no-accessor-as-prop": "error",
+    "solid/no-write-in-pure-computation": "error",
+    "solid/no-module-scope-reactive-primitive": "error",
+    "solid/no-react-deps": "error",
+    "solid/no-react-specific-props": "error",
+    "solid/components-return-once": "error",
+    "solid/jsx-no-duplicate-props": "error",
+    "solid/prefer-for": "error",
+    "solid/no-unused-signal": "warn",
+    "solid/prefer-show": "warn"
   },
   "ignorePatterns": ["dist/**", "node_modules/**"]
 }

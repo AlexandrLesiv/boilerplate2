@@ -16,7 +16,7 @@ type Story = StoryObj;
 
 const boundary = (result: ApiResult<Payload> | undefined) => () => (
   <DataBoundary<Payload> result={result} keepStatus>
-    {(data) => <p>{data.title}</p>}
+    {(data) => <p>{data().title}</p>}
   </DataBoundary>
 );
 

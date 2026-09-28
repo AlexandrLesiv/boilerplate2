@@ -110,6 +110,13 @@ parameters: { msw: { handlers: [loginUnauthorized] } }
 
 Create a `src/mocks/handlers/<domain>.ts` file whenever a new form or API endpoint needs shared handler variants. Export one handler per state, plus a default `<domain>Handlers` array for the happy path.
 
+### Checking for render churn
+
+Every story is instrumented by `.storybook/preview.tsx`. For a component that takes a render
+callback or renders a list, add a play function that resets the counters after mount, drives one
+change, and asserts `renderStats().domRemoved === 0`. A non-zero count means the subtree is being
+rebuilt instead of updated — see *Guarding against accidental re-render churn* in `CLAUDE.md`.
+
 ### Querying in play(): use findBy for the first hit
 
 `RootLayout` renders `props.children` inside a `<Suspense>`, and the i18n resource is still

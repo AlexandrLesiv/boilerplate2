@@ -59,3 +59,6 @@ Writinig a new feature: Functional Edge Cases -> UX Design -> Opquast Compliance
 - https://cssgradient.io/gradient-backgrounds/
 - https://ui-patterns.com/patterns
 - https://www.nngroup.com/articles/ten-usability-heuristics/
+
+### Animation
+- https://animations.dev/learn

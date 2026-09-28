@@ -5,6 +5,8 @@ import type { Preview } from 'storybook-solidjs-vite';
 
 import '../src/assets/styles/global.css.ts';
 import { allHandlers } from '../src/mocks/handlers';
+import { setClientConfigOverrides } from '../src/mocks/handlers/config';
+import { installRenderStats, setRenderStatsOverlay } from './render-stats';
 
 const BREAKPOINTS = {
   mobile: {
@@ -67,8 +69,32 @@ const preview: Preview = {
    * served without revalidating, so a story would render the *previous* story's data
    * and never hit its own MSW handler. Reset the cache so every story starts cold.
    */
-  beforeEach: () => {
+  globalTypes: {
+    renderStats: {
+      description: 'Overlay counting reactive-owner creation and DOM churn',
+      defaultValue: 'off',
+      toolbar: {
+        title: 'Renders',
+        icon: 'lightning',
+        items: [
+          { value: 'off', title: 'Render stats: off' },
+          { value: 'on', title: 'Render stats: on' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  beforeEach: (context) => {
     query.clear();
+    // Also module-level state that outlives a story switch: without this a story that turns a flag
+    // off leaves it off for the next one.
+    setClientConfigOverrides({});
+    // Counts component instantiations and DOM churn for this story — `renderStats()` in a play
+    // function, or `__renderStats.get()` in the browser console.
+    installRenderStats(context.canvasElement);
+    // Off unless switched on from the toolbar, so stories, snapshots and the a11y tree are
+    // untouched by default.
+    setRenderStatsOverlay(context.globals['renderStats'] === 'on', context.id);
   },
   parameters: {
     msw: {

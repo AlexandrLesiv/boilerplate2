@@ -87,6 +87,10 @@ verify, and do not describe an unverified path as working.
 - **Arrow functions everywhere** — use `const fn = () => {}` for all functions. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error`, and oxlint finds that config by searching upward, so it applies from any workspace. Be aware of the gap: those rules only catch function *expressions* passed as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is **not** flagged. That is why `common/libs/stores/root.ts`, `common/libs/router/index.ts` and the `*.stories.tsx` helpers still pass lint; follow the convention in new code rather than copying them.
 - **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm lint:versions` from the repo root; it checks every workspace plus the root.
 - **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. No locale — GET routes are locale-agnostic.
+- **Never call `fetch` directly in app code** — always go through `createApiCall` / `createMutation`,
+  so the call gets URL building, locale headers, perf timing, `apiError` logging and the dev-mode
+  response check. Let the thrown `ApiError` propagate to a `DataBoundary` rather than hand-rolling
+  `fetch` to sidestep it.
 - **`createMutation(route)`** for POST/PUT/DELETE — call inside a component (it's a hook that reads locale from `useI18n`), returns a typed async function for use in event handlers.
 - **TypeBox is stripped from the client bundle** — `vite-plugins/strip-typebox.ts` replaces `@sinclair/typebox` with a no-op Proxy in the `client` Vite environment. Do not rely on TypeBox runtime behavior in browser code.
 - **Response envelope** from `@repo/shared`: `{ data: T[], meta: { total, isOk } }` for lists, `{ data: T }` for singles.
@@ -121,6 +125,84 @@ Two things this rule does *not* cover:
 - **Bootstrap that must fail before anything starts.** Env validation in
   `apps/api/src/common/env.ts` runs at module load and calls `process.exit(1)`; there is nothing
   to block yet. Sync is fine there, and so is `console.error`.
+
+## Guarding against accidental re-render churn
+
+Solid updates the DOM in place; the classic way to lose that is to make a whole subtree
+re-create itself. It is a nasty class of bug because the code type-checks, lints clean, and renders
+the right thing — it is only slow.
+
+**What lint catches** (`.oxlintrc.json`, all `error`):
+
+| rule | catches |
+|---|---|
+| `solid/reactivity` | reading a prop or signal outside a tracked scope; use `untrack` when reading once is deliberate |
+| `solid/no-destructure` | destructuring component props, which drops reactivity |
+| `solid/prefer-for` | `array.map()` in JSX — recreates every element on change; use `<For>` |
+| `solid/no-accessor-as-prop` | passing an accessor where a value is expected |
+| `solid/no-write-in-pure-computation` | writing a signal from a memo or render |
+| `solid/no-module-scope-reactive-primitive` | `createSignal` at module scope |
+
+Warnings never block a commit — `oxlint` exits 0 on them and `--deny-warnings` is not set, so the
+husky `pre-commit` hook only stops on errors. Use `pnpm lint:strict` when you want warnings to fail.
+
+`solid/no-single-arg-create-effect` is deliberately **off**: it describes the Solid 2 API, and on
+solid-js 1.9 the second argument to `createEffect` is the initial value, so following it would
+introduce a bug.
+
+**What lint cannot catch, and the guard that does.** A render-callback prop typed as
+`(value: T) => JSX.Element` rebuilds its subtree on every change. Lint sees nothing wrong — this
+was measured at one mount plus one cleanup per change, with the DOM node replaced. So any prop that
+renders reactive data must be typed `RenderProp<T>` (`src/common/types.ts`), which hands the
+consumer an accessor and makes the value form a compile error at every call site. That type is the
+guard; lint is not.
+
+**Measuring it in Storybook.** `.storybook/preview.tsx` instruments every story, so any play
+function can assert that an interaction rebuilt nothing:
+
+```ts
+import { renderStats, resetRenderStats } from '../../../.storybook/render-stats';
+
+play: async ({ canvas, userEvent }) => {
+  await canvas.findByTestId('out');   // let it mount first
+  resetRenderStats();
+  await userEvent.click(canvas.getByRole('button', { name: 'next' }));
+  expect(renderStats().domRemoved).toBe(0);
+},
+```
+
+`owners` counts reactive owners created, `domAdded` / `domRemoved` count node churn. On a correctly
+reactive component all three stay **0** across data changes; the same component taking a value
+instead of an accessor measured 3/3/3 over three changes.
+
+**Reading the numbers.** The overlay zeroes itself once the story stops mutating the DOM, so a
+story you just opened reads `0 / 0` and anything above zero happened *after* it settled. It shows
+`settling…` until then. It re-arms when the **story** changes, not when args change: `beforeEach`
+runs on every control tweak, so zeroing there would wipe the measurement for the change you are
+making. Counts therefore accumulate while you play with controls — two swaps read `+2 / -2`.
+
+They count *creations*, so a navigation is not zero: Home → News is `+2 / -2` — one for the page's
+root element swapping, one for `DataBoundary`'s pending `<p>` being replaced by the loaded `<ol>`.
+An article is the same. Pages with no async data are `+1 / -1`. The trail of recent events
+(`+div -div +ol -p`) makes a count explain itself. Churn is the number climbing when *nothing*
+navigated or changed.
+
+**To see it rather than assert it**, flip **Render stats** in the Storybook toolbar. That adds a
+counter in the bottom-right corner, outlines each element red as it is created, turns the counter's
+border red once anything has been removed, and logs `[render-stats] rebuilt N node(s): …` with the
+tag names. Off by default, so stories, snapshots and the a11y tree are untouched. `__renderStats.get()`
+also works in the browser console.
+
+Four things to know if you extend it. The self-zeroing happens only while the overlay is on and
+only on a story change — play functions call `resetRenderStats()` themselves, and a timer zeroing
+their baseline mid-measurement would make those assertions flaky. It observes `context.canvasElement`, re-bound per story,
+rather than `document.body` — the body includes Storybook's addon DOM (the a11y vision-filter
+**SVG**, the highlight root), which otherwise gets counted as the story rendering; that element is
+`#storybook-root` in the Storybook iframe and an anonymous div in the vitest runner, so it has to
+be passed in rather than looked up. Owners tagged `$DEVCOMP` are not distinguishable here, so there
+is no per-component count — `owners` plus `domRemoved` is the signal. And painting the overlay
+writes `textContent`, which the observer sees, so the paint is scheduled on a frame and
+de-duplicated; painting straight from the observer callback hangs the tab.
 
 ## Comments
 
@@ -217,7 +299,41 @@ Rules:
 
 Use the `logger` agent (`.claude/agents/logger.md`) when adding a feature that needs observability or auditing a component for missing log calls.
 
+**Dev-only response validation.** `apiFetch` checks every response against the route's
+`response[status]` schema and logs `api.response.invalid` with the failing paths when it diverges.
+It is observational only — no `Convert`, `Default` or `Clean`, so the payload the app receives is
+identical to production and a bad field shows up as a log rather than a silently repaired value.
+It is not awaited (loading TypeBox would otherwise sit on the response path) and the whole branch
+is behind an inline `import.meta.env.DEV`, which is what lets the production build drop it —
+`strip-typebox.ts` leaves no `Value` there. Keep the guard inline and the import dynamic.
+
 **`apps/api`** has no custom logger — use Fastify's built-in one (`app.log`, `request.log`), not `console.*`. The exception is bootstrap code that runs before the Fastify instance exists, such as env validation in `src/common/env.ts`, where `console.error` is correct.
+
+## Error pages and data boundaries
+
+Every error the app can surface has its own component under
+`views/components/ErrorState/errors/` (`Error401`, `Error429`, `ErrorOffline`, …). They are pure
+presentation and all defer to `ErrorLayout` for the chrome, so a status can grow its own copy or
+actions without touching the others.
+
+- **`ErrorState`** is the dispatcher: it maps a kind to its component and owns the SSR response
+  status. Pass `keepStatus` when the failure is a region inside an otherwise healthy page.
+- **`ErrorLayout`** is sized by its container, never the viewport — it is an inline-size container
+  and the status code scales with `cqi`, so the same component works as a full page or a narrow
+  panel. Do not add viewport units or fixed positioning to it.
+- **`SupportPrompt`** is identical on every error page. The send button is deliberately a no-op
+  for now; it records `support.logs.send` so the intent shows up in the session log, and
+  `logger.export()` is what it should eventually call.
+- **`DataBoundary`** wraps any region that reads async data: `ErrorBoundary` outside `Suspense`
+  (so it also catches failures thrown while suspended), turning a thrown `ApiError` into the
+  matching page via `errorKindOf`.
+
+**Adding an error kind:** add copy to `pages.errors` in all three locales, add the kind to
+`ERROR_KINDS`, add the component, and register it in `errors/index.ts`. `ERROR_KINDS` is
+`satisfies`-checked against the translations and the registry is a total `Record`, so missing
+either half is a type error rather than a runtime blank.
+
+`notFoundRoute` (`path: '*'`) is the catch-all and **must stay last** in `appRoutes`.
 
 ## Running locally
 
@@ -280,6 +396,30 @@ export const exampleRoute = defineRoute({
 ## Route structure
 
 Routes are defined as siblings under the locale layout route (`/:locale?`), not as nested children. **Do not add `children` to a route that has its own `component`** — in SolidJS Router v1, doing so turns the component into a layout that requires `<Outlet>`, and navigating to the parent path exact will not render the component content.
+
+**Every dynamic segment needs a `matchFilters` entry.** A bare `:id` matches any string, so
+`/news/abc` reaches the page, `Number('abc')` becomes `NaN`, and the request goes out as
+`/hackernews/item/NaN` — which the API rejects with a 400 that crashes SSR from the route's
+`preload`. Constrain the parameter and invalid URLs fall through to the catch-all 404 instead,
+without ever reaching the API:
+
+```ts
+export const articlePageRoute = defineRoute({
+  path: '/news/:id',
+  component: ArticlePage,
+  matchFilters: { id: /^\d+$/ },
+  preload: ({ params }) => void getArticle({ params: { id: Number(params.id) } }),
+});
+```
+
+A filter is a `RegExp`, a string array of allowed values (as `/:locale?` uses), or a predicate.
+Adding a parameterised route without one is a bug, not a style preference.
+
+**Do not set the response status from a `Show`/`Suspense` fallback.** SSR renders and throws away a
+first pass while resources are pending, and a status set in that pass still sticks — a fallback
+marking 404 makes *every* successful page 404. Set it once the answer is known (in the `createAsync`
+body) with `markResponseStatus` from `common/libs/http/response-status`, and pass `keepStatus` to
+any `ErrorState` rendered as a fallback.
 
 **Trailing slashes**: exactly one URL form is valid — the slash-free one. `src/middleware.ts` 301-redirects any path ending in `/` (root excepted) to the slash-free form, preserving the query string. Do not author links with trailing slashes, and keep `canonical`/`hreflang` hrefs slash-free so they agree with the redirect target.
 
@@ -375,6 +515,44 @@ Never add env variables in only one place — schema, type declaration, and exam
 4. Call it on the frontend with `createApiCall(route)` from `apps/fe/src/common/libs/api`
 5. Add an MSW handler in `apps/fe/src/mocks/handlers/<domain>.ts`, and register it in
    `src/mocks/browser.ts` and `.storybook/preview.tsx` if every page needs it
+
+**Report an expected failure as data, not as a rejection.** Use `createSafeApiCall`, which resolves
+to `ApiResult<T>` — `{ ok: true, data }` or `{ ok: false, status, payload }`. `status` is `null`
+when the request never got a response; `payload` is whatever body the server sent with the failure
+(parsed JSON, raw text, or `undefined` when empty) and is also on `ApiError.payload`. Pass the
+result to `DataBoundary`, which owns all three states:
+
+```tsx
+const article = createAsync(() => getArticle({ params: { id: Number(params.id) } }));
+
+<DataBoundary result={article()}>{(res) => <Article story={res().data} />}</DataBoundary>
+```
+
+The reason is not style. A rejection that crosses the SSR boundary is serialised into the hydration
+payload and replayed in the browser, where nothing can catch it — so the browser reports
+`Uncaught (in promise) ApiError` even though `apiFetch` logged it and an `ErrorBoundary` rendered
+the right page. Resolving instead means there is no rejection to report, in dev or prod, with no
+suppression hacks. `createApiCall` still exists for calls whose failure genuinely is exceptional;
+its `ApiError` reaches `DataBoundary`'s `ErrorBoundary`, at the cost of that console entry.
+
+**The children callback receives an accessor — read it inside the JSX, never destructure it.**
+Taking the value instead makes Solid re-run the callback on every new result and tear down the
+whole subtree: measured at one mount plus one cleanup per data change, with the DOM node replaced,
+which on the news list means rebuilding all 30 rows on each refetch. With the accessor the subtree
+is created once and only the changed text updates.
+
+The failure `payload` is carried for the app to act on, not displayed: it is server text and would
+bypass i18n. Nothing logs it either, since an error body can echo submitted values.
+
+`DataBoundary` also only renders the error page once a definitive result exists, which is what makes
+it safe for that page to set the SSR response status — see the note on discarded render passes in
+[Route structure](#route-structure).
+
+Dynamic segments also need a `matchFilters` entry — see [Route structure](#route-structure).
+
+If a schema introduces a new `format`, register a validator in
+`apps/fe/src/common/libs/fetch/validate-response.ts`. TypeBox ships none, and an unregistered
+format makes every response using it report `Unknown format` as a divergence.
 
 If the endpoint's response should be runtime-configurable rather than fixed, see
 [Runtime client configuration and feature flags](#runtime-client-configuration-and-feature-flags).
