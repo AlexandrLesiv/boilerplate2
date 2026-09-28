@@ -8,12 +8,15 @@ import { useI18n } from '../i18n';
 export { apiFetch, ApiError } from '../fetch';
 export type { CallOptions, RouteResponse } from '../fetch';
 
+/** The `query` cache key for a route. Exported so callers can `revalidate()` it. */
+export const apiQueryKey = <S extends RouteSchema>(route: SharedApiRoute<S>) => `api:${route.method}:${route.url}`;
+
 // For GET requests — cache-based, preload-compatible.
 // Call at module level in route files; use with createAsync in components.
 export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) =>
   query(
     (options?: Omit<CallOptions<S>, 'signal'>) => apiFetch(route, undefined, options as CallOptions<S>),
-    `api:${route.method}:${route.url}`
+    apiQueryKey(route)
   );
 
 // For mutations (POST/PUT/DELETE) — reads locale from i18n context, not cached.

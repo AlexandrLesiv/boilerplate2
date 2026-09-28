@@ -2,15 +2,21 @@ import type { JSX, ParentProps } from 'solid-js';
 import { untrack } from 'solid-js';
 
 import { MetaProvider } from '@solidjs/meta';
-import { MemoryRouter, Route, createMemoryHistory } from '@solidjs/router';
+import { MemoryRouter, Route, createMemoryHistory, query } from '@solidjs/router';
 
+import type { ClientConfig } from '@repo/shared';
+
+import { AppProvider } from '../src/AppProvider';
 import { generalTheme } from '../src/assets/styles/themes.css';
 import { ConfigContext, createConfigStore } from '../src/common/libs/config';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
 import type { Locale } from '../src/common/libs/i18n';
 import { LoggerContext, createLogger } from '../src/common/libs/logger';
+import { DedupedMetaProvider } from '../src/common/libs/seo/DedupedMetaProvider';
 import { RootStoreContext, createRootStore } from '../src/common/libs/stores/root';
+import { setClientConfigOverrides } from '../src/mocks/handlers/config';
 import RootLayout from '../src/views/layouts/RootLayout';
+import { appRoutes } from '../src/views/routes';
 
 type ProviderOptions = {
   user?: { id: string; email: string } | null;
@@ -103,3 +109,44 @@ export const withPageLayout = solidDecorator((Story, { user = null, path = '/*',
     </MemoryRouter>
   </AppProviders>
 ));
+
+export interface FullAppProps {
+  /** Locale-prefixed path to boot at, e.g. `/ua/news`. */
+  path?: string;
+  /** Feature flag overrides the mocked config endpoint should serve. */
+  features?: Partial<ClientConfig['features']>;
+}
+
+/**
+ * The whole application, navigable. Uses the real `AppProvider` and the real `appRoutes`, so the
+ * only difference from `src/App.tsx` is MemoryRouter instead of Router — Storybook's iframe URL
+ * is not an app route. Pair with `allHandlers` so every endpoint answers.
+ *
+ * Used as a story `render`, not a decorator: a decorator that ignored the story's own output
+ * would leave Storybook rendering its "No Preview" placeholder alongside the app.
+ *
+ * Expects to be remounted on every control change — `App.stories.tsx` forces that with a keyed
+ * `<Show>`. That is why the config override and the cache clear are synchronous here: they have to
+ * land before RootLayout's first fetch. Driving it in place instead does not work, because
+ * `revalidate()` on the config query does not make the live `createAsync` re-request.
+ */
+export const FullApp = (props: FullAppProps): JSX.Element => {
+  setClientConfigOverrides(props.features);
+  // The previous instance's cached config would otherwise be served to this one.
+  query.clear();
+
+  const history = createMemoryHistory();
+  history.set({ value: props.path ?? '/', replace: true });
+
+  return (
+    <MetaProvider>
+      <DedupedMetaProvider>
+        <div class={generalTheme}>
+          <AppProvider>
+            <MemoryRouter history={history}>{appRoutes}</MemoryRouter>
+          </AppProvider>
+        </div>
+      </DedupedMetaProvider>
+    </MetaProvider>
+  );
+};

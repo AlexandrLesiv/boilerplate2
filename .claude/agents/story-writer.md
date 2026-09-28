@@ -110,6 +110,18 @@ parameters: { msw: { handlers: [loginUnauthorized] } }
 
 Create a `src/mocks/handlers/<domain>.ts` file whenever a new form or API endpoint needs shared handler variants. Export one handler per state, plus a default `<domain>Handlers` array for the happy path.
 
+### Querying in play(): use findBy for the first hit
+
+`RootLayout` renders `props.children` inside a `<Suspense>`, and the i18n resource is still
+loading on the first tick — so page content is **not in the DOM** when `play` starts. A
+synchronous `canvas.getBy*` throws; `await canvas.findBy*` retries until it appears.
+
+Make the *first* query of every `play` an `await canvas.findBy*`. Later queries in the same
+block can stay synchronous, since the tree is mounted by then.
+
+`userEvent.type` also parses `{` and `[` as key descriptors. Double them (`{{`, `[[`) to type
+the literal character, or the run fails with `Expected key descriptor`.
+
 ### play() for form stories
 
 Use `play` to drive form interaction. Extract fill+submit to a local helper to avoid repetition:

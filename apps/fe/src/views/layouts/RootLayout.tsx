@@ -8,9 +8,10 @@ import { ConfigContext, createConfigStore } from '../../common/libs/config';
 import {
   I18nContext,
   createI18nStore,
-  DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   localeFromParams,
+  localePath,
+  stripLocale,
 } from '../../common/libs/i18n';
 import type { Locale } from '../../common/libs/i18n';
 import type { AppRouteInfo } from '../../common/libs/router';
@@ -33,13 +34,9 @@ const RootLayout: Component<ParentProps> = (props) => {
   const features = () => config.config().features;
   const pfx = () => (params.locale ? `/${params.locale}` : '');
 
-  const pagePath = () => {
-    const currentLocale = params.locale as Locale | undefined;
-    return currentLocale ? location.pathname.slice(`/${currentLocale}`.length) || '/' : location.pathname;
-  };
+  const pagePath = () => stripLocale(location.pathname, params.locale);
 
-  const alternateHref = (target: Locale) =>
-    target === DEFAULT_LOCALE ? pagePath() : `/${target}${pagePath() === '/' ? '' : pagePath()}`;
+  const alternateHref = (target: Locale) => localePath(pagePath(), target);
 
   const routeMeta = () => {
     const match = matches().findLast((m) => m.route.info?.meta);

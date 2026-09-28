@@ -155,7 +155,19 @@ const candidate = Value.Clean(schema, Value.Default(schema, input));
 - Stories sit next to the component: `ComponentName.stories.tsx`
 - Set `parameters.msw.handlers` on any story that triggers a network call
 - Use `withPageLayout()` for page stories, `withAppProviders()` for component stories
-- Handler factories live in `src/mocks/handlers/` — reuse them across stories
+- Handler factories live in `src/mocks/handlers/` — reuse them across stories. `allHandlers`
+  (from `src/mocks/handlers/index.ts`) is every endpoint on its happy path
+- `App/Full Application` renders the real router and route tree on mocks, with locale, page and
+  feature flags as **controls**. Keep that set to app-wide concerns; page-specific interactions
+  belong in that page's own stories. Two constraints if you extend it: Storybook updates a story
+  in place instead of remounting, so the render wraps `FullApp` in a keyed `<Show>` to force a
+  remount, and `FullApp` clears the `query` cache — `revalidate()` alone does not make a live
+  `createAsync` re-request, so a flag change would otherwise be served the cached config
+- In `play`, make the first query `await canvas.findBy*` — page content sits behind
+  `RootLayout`'s `<Suspense>` and is absent on the first tick
+- Nothing in the suite currently exercises navigation: no story clicks a link, so in-app routing,
+  the list/article mock agreement, and `LocaleSwitcher`'s hrefs are unverified
+- Run the stories as tests with `pnpm --filter fe vitest --project=storybook --run`
 - See `.claude/agents/story-writer.md` for the required story set per component type
 - See `.claude/agents/storybook-a11y.md` for the a11y review process
 

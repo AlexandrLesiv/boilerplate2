@@ -4,8 +4,7 @@ import { mswLoader } from 'msw-storybook-addon/csf3';
 import type { Preview } from 'storybook-solidjs-vite';
 
 import '../src/assets/styles/global.css.ts';
-import { configHandlers } from '../src/mocks/handlers/config';
-import { hackernewsHandlers } from '../src/mocks/handlers/hackernews';
+import { allHandlers } from '../src/mocks/handlers';
 
 const BREAKPOINTS = {
   mobile: {
@@ -73,7 +72,7 @@ const preview: Preview = {
   },
   parameters: {
     msw: {
-      handlers: [...configHandlers, ...hackernewsHandlers],
+      handlers: allHandlers,
     },
     viewport: {
       options: BREAKPOINTS,

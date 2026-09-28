@@ -31,8 +31,10 @@ async function fillAndSubmit(
   email: string,
   password: string
 ) {
-  await userEvent.type(canvas.getByLabelText(/email/i), email);
-  await userEvent.type(canvas.getByLabelText(/password/i), password);
+  // findBy, not getBy: the page sits behind RootLayout's <main> Suspense and is not in the DOM
+  // on the first tick, while the i18n resource is still loading.
+  await userEvent.type(await canvas.findByLabelText(/email/i), email);
+  await userEvent.type(await canvas.findByLabelText(/password/i), password);
   await userEvent.click(canvas.getByRole('button', { name: /log in/i }));
 }
 
@@ -87,7 +89,7 @@ export const Submitting: Story = {
 export const VeryLongEmail: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.type(
-      canvas.getByLabelText(/email/i),
+      await canvas.findByLabelText(/email/i),
       'averylonglocalpart.that.goes.on.and.on.and.on@subdomain.verylongdomainname.example.com'
     );
   },
@@ -96,24 +98,25 @@ export const VeryLongEmail: Story = {
 /** 128-character password — tests that no UI element clips or overflows. */
 export const VeryLongPassword: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(/email/i), 'user@example.com');
-    await userEvent.type(canvas.getByLabelText(/password/i), 'A'.repeat(128));
+    await userEvent.type(await canvas.findByLabelText(/email/i), 'user@example.com');
+    await userEvent.type(await canvas.findByLabelText(/password/i), 'A'.repeat(128));
   },
 };
 
 /** Password with special characters that could cause encoding or escaping issues. */
 export const SpecialCharacterPassword: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(/email/i), 'user@example.com');
-    await userEvent.type(canvas.getByLabelText(/password/i), '!@#$%^&*()_+{}|:<>?[];\',./`~"\\');
+    await userEvent.type(await canvas.findByLabelText(/email/i), 'user@example.com');
+    // `{` and `[` are userEvent key descriptors; doubling them types the literal character.
+    await userEvent.type(await canvas.findByLabelText(/password/i), '!@#$%^&*()_+{{}}|:<>?[[];\',./`~"\\');
   },
 };
 
 /** Unicode and emoji in the password field — tests multi-byte character handling. */
 export const UnicodePassword: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(/email/i), 'user@example.com');
-    await userEvent.type(canvas.getByLabelText(/password/i), 'Pässwörد🔑');
+    await userEvent.type(await canvas.findByLabelText(/email/i), 'user@example.com');
+    await userEvent.type(await canvas.findByLabelText(/password/i), 'Pässwörد🔑');
   },
 };
 
@@ -121,8 +124,8 @@ export const UnicodePassword: Story = {
 export const UnicodeEmail: Story = {
   play: async ({ canvas, userEvent }) => {
     // Most browsers reject non-ASCII email in type="email" — this tests the validation message.
-    await userEvent.type(canvas.getByLabelText(/email/i), 'user@münchen.de');
-    await userEvent.type(canvas.getByLabelText(/password/i), 'password');
+    await userEvent.type(await canvas.findByLabelText(/email/i), 'user@münchen.de');
+    await userEvent.type(await canvas.findByLabelText(/password/i), 'password');
   },
 };
 
@@ -133,15 +136,15 @@ export const UnicodeEmail: Story = {
  */
 export const XssAttemptEmail: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(/email/i), '<script>alert(1)</script>@example.com');
-    await userEvent.type(canvas.getByLabelText(/password/i), 'password');
+    await userEvent.type(await canvas.findByLabelText(/email/i), '<script>alert(1)</script>@example.com');
+    await userEvent.type(await canvas.findByLabelText(/password/i), 'password');
   },
 };
 
 /** Whitespace-only values — tests that the form doesn't submit blank credentials. */
 export const WhitespaceOnly: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.type(canvas.getByLabelText(/email/i), '   ');
-    await userEvent.type(canvas.getByLabelText(/password/i), '   ');
+    await userEvent.type(await canvas.findByLabelText(/email/i), '   ');
+    await userEvent.type(await canvas.findByLabelText(/password/i), '   ');
   },
 };

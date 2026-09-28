@@ -22,6 +22,14 @@ export const loadLocale = query((locale: Locale) => localeLoaders[locale](), 'i1
 export const localeFromParams = (params: { locale?: string }): Locale =>
   (params.locale as Locale | undefined) ?? DEFAULT_LOCALE;
 
+/** Drops the locale prefix: (`/ua/news`, `ua`) → `/news`, (`/ua`, `ua`) → `/`. */
+export const stripLocale = (pathname: string, locale: string | undefined): string =>
+  locale ? pathname.slice(`/${locale}`.length) || '/' : pathname;
+
+/** Adds the locale prefix, except for the default locale, which is served unprefixed. */
+export const localePath = (path: string, locale: Locale): string =>
+  locale === DEFAULT_LOCALE ? path : `/${locale}${path === '/' ? '' : path}`;
+
 export const createI18nStore = (getLocale: () => Locale) => {
   const translations = createAsync(() => loadLocale(getLocale()), { initialValue: en });
   return {

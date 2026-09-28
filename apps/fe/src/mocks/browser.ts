@@ -1,6 +1,5 @@
 import { setupWorker } from 'msw/browser';
 
-import { configHandlers } from './handlers/config';
-import { hackernewsHandlers } from './handlers/hackernews';
+import { allHandlers } from './handlers';
 
-export const worker = setupWorker(...configHandlers, ...hackernewsHandlers);
+export const worker = setupWorker(...allHandlers);
