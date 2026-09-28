@@ -4,6 +4,7 @@ import { Value } from '@sinclair/typebox/value';
 // Add every variable here and to apps/api/.env.example when introducing a new one.
 const EnvSchema = Type.Object({
   PORT: Type.Number({ minimum: 1, maximum: 65535, default: 4000 }),
+  CLIENT_CONFIG_PATH: Type.String({ minLength: 1, default: './client-config.json' }),
 });
 
 // `process.env` is a host object whose prototype is not `Object.prototype`, so TypeBox

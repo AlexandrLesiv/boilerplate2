@@ -1,7 +1,7 @@
 import colors from 'picocolors';
 import type { Plugin, ResolvedConfig } from 'vite';
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
 
 /**
  * Builds src/sw.ts into dist/client/sw.js after the client environment build.
@@ -25,7 +25,7 @@ export function serviceWorkerPlugin(): Plugin {
       async handler() {
         if (this.environment?.name !== 'client') return;
 
-        const manifest = JSON.parse(readFileSync('dist/client/.vite/manifest.json', 'utf-8')) as Record<
+        const manifest = JSON.parse(await readFile('dist/client/.vite/manifest.json', 'utf-8')) as Record<
           string,
           { file: string; css?: string[] }
         >;
@@ -52,7 +52,7 @@ export function serviceWorkerPlugin(): Plugin {
           },
         });
 
-        const { size } = statSync('dist/client/sw.js');
+        const { size } = await stat('dist/client/sw.js');
         config.logger.info(
           `${colors.cyan('dist/client/sw.js')}  ${colors.dim(`${(size / 1024).toFixed(2)} kB`)}  ${colors.dim(`(${assets.length} assets precached)`)}\n`
         );

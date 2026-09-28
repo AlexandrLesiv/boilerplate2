@@ -2,6 +2,55 @@
 
 pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 
+## How to approach work here (chain of thought)
+
+This repo is full of constraints that invalidate otherwise-reasonable designs — TypeBox is
+stripped from the client bundle, Vite cannot import the shared package, Storybook reads story
+tags by static analysis. None of them are visible from the file you are about to edit. Reasoning
+from memory here produces work that typechecks, lints, and is wrong.
+
+So think in this order, and make the thinking visible in your response:
+
+**1. Name the dimensions before touching code.** `TODO.md` holds the project's `FLOWS` — the
+ordered list of concerns for writing a component and for writing a feature (functional edge
+cases → UX → Opquast → a11y → UI → styling edge cases → performance → SEO → … → implementation
+→ documentation). Walk the flow that matches the task and say which dimensions apply and which
+you are consciously skipping. Skipping is fine; skipping silently is not.
+
+**2. Verify every load-bearing assumption before designing on it.** An assumption is
+load-bearing if a different answer would change the design. Check it, in rough order of cost:
+
+- read the installed types — `apps/*/node_modules/<pkg>/**/*.d.ts` is the ground truth for the
+  version actually installed, not what the docs say about the latest
+- write a throwaway probe, run it, then revert it — a scratch plugin, a scratch story, a
+  five-line `.mjs`. Put it where the package's dependencies resolve, and delete it after
+- run the real thing and inspect the real output — the built bundle, `index.json`, the
+  endpoint, the serialised SSR payload
+
+**3. State the design and name the constraint that forced it.** If a constraint ruled out the
+obvious approach, say so in one line. That sentence is usually the most valuable thing in the
+whole response, and it is what should end up in the docs.
+
+**4. Ask only when the answer changes the work.** Where the server gets flag values from, or
+whether the client polls, changes the architecture — ask. Naming, file placement, and which
+helper to reuse do not — decide, and mention what you decided.
+
+**5. Implement, then prove the mechanism engaged.** Not that it compiles — that it *works*.
+`pnpm check` cannot see that a define was replaced, a tag reached the sidebar, or a watcher
+fired. Two real examples from this repo, both of which passed every check while doing nothing:
+
+- a Storybook story tag set by a helper (`edgeCase(story)` returning `{ ...story, tags }`) —
+  runtime-correct, but the CSF indexer reads `tags` statically, so `index.json` reported zero
+  tagged stories and the sidebar filter never appeared
+- a config group without `default: {}` — `Value.Default` returns `{}` and every flag inside it
+  vanishes, with no error anywhere
+
+In both cases the check that caught it was looking at the artifact, not the source.
+
+**6. Report gaps explicitly.** If part of the scope is unfinished, blocked, or deliberately
+left out, say which part and why. Do not let a green check stand in for a claim you did not
+verify, and do not describe an unverified path as working.
+
 ## Apps and packages
 
 | Path | Purpose |
@@ -43,6 +92,63 @@ pnpm monorepo with a SolidJS frontend, a Fastify API, and a shared package.
 - **Response envelope** from `@repo/shared`: `{ data: T[], meta: { total, isOk } }` for lists, `{ data: T }` for singles.
 - **Styles**: Vanilla Extract `.css.ts` files only. No inline styles, no CSS modules, no Tailwind.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
+
+## Node APIs
+
+**Prefer the promise-based API over the sync one.** `node:fs/promises` over `node:fs` sync calls,
+`promisify(exec)` over `execSync`, `await` over `*Sync` generally. A sync call blocks the whole
+event loop: in `apps/api` that stalls every in-flight request, and in a Vite plugin it stalls the
+dev server.
+
+```ts
+// ✗
+import { readFileSync } from 'node:fs';
+const raw = JSON.parse(readFileSync(path, 'utf8'));
+
+// ✓
+import { readFile } from 'node:fs/promises';
+const raw = JSON.parse(await readFile(path, 'utf8'));
+```
+
+If that makes a factory async, make it async and `await` it at the call site — `apps/api/src/server.ts`
+is already top-level `await`, and Vite plugin hooks accept async handlers.
+
+Two things this rule does *not* cover:
+
+- **Callback/event APIs are already non-blocking.** `fs.watch` is an EventEmitter, not a sync
+  call; `fs/promises.watch` is an async iterator that needs an `AbortController` to stop. Keep
+  the EventEmitter form where you want a `close()` handle.
+- **Bootstrap that must fail before anything starts.** Env validation in
+  `apps/api/src/common/env.ts` runs at module load and calls `process.exit(1)`; there is nothing
+  to block yet. Sync is fine there, and so is `console.error`.
+
+## Comments
+
+Comment the *why*, never the *what*, and only when the why is not already visible. The default
+is no comment.
+
+Write one when:
+
+- the code looks wrong, redundant or over-complicated but is deliberate
+- deleting it would invite a "cleanup" that reintroduces a bug
+- a value, an ordering, or a branch encodes a decision the reader cannot infer
+
+Do not write one to restate the code, to label structure (`// helpers`, `// --- state ---`), to
+narrate history or intent, or to repeat what the type, the name, or this file already says.
+
+**One or two lines.** If the explanation needs a paragraph it does not belong in the source —
+put it in `CLAUDE.md` or an agent doc and leave the comment as a pointer. Prefer a clearer name
+or a smaller function over a comment explaining a confusing one.
+
+```ts
+// ✗ restates the code
+// Fetch the config and merge it with the defaults
+const merged = mergeClientConfig(response.data);
+
+// ✓ explains what the code cannot
+// Clean before Check: Check accepts unknown properties.
+const candidate = Value.Clean(schema, Value.Default(schema, input));
+```
 
 ## Storybook (`apps/fe`)
 
@@ -199,6 +305,43 @@ IDB stores are created via `createIdbStore` in `apps/fe/src/common/libs/idb/inde
 - Deleting and recreating a store is the right migration when an indexed field's type changes (e.g. `number` → `string`), because IDB index comparisons are type-sensitive.
 - IDB timestamps are stored as ISO 8601 strings (`new Date().toISOString()`), not Unix timestamps. ISO strings sort correctly as strings so IDB range queries still work.
 
+## Runtime client configuration and feature flags
+
+Runtime config is served by `GET /config/client` and read through `useConfig()` / `useFeature()`.
+`packages/shared/src/entities/client-config.ts` is the single source of truth for the shape, the
+fallback defaults, and the OpenAPI output. The values a build ships are passed in from
+`apps/fe/vite.config.ts` via `defineClientConfiguration({ … })`.
+
+**Four layers, lowest precedence first:**
+
+1. **Schema defaults** — the `default` on each field in `ClientConfigEntity`. The fallback for
+   anything the build-time configuration omits.
+2. **Build-time configuration** — `defineClientConfiguration({ … })` in `apps/fe/vite.config.ts`,
+   validated against the schema and baked into the bundle as `__CLIENT_CONFIG_DEFAULTS__`. An
+   invalid value fails the build, the same contract `validate-env.ts` applies to env variables.
+3. **`apps/api/client-config.json`** — overlaid by the API. Path from `CLIENT_CONFIG_PATH`; the
+   file is watched, so flipping a flag needs no restart or redeploy.
+4. **The response** — overlaid on the baked configuration by the client.
+
+Fetched **once per page load**; under SSR the result is serialised into the HTML payload, so
+there is no flash of defaults and no second request. A flag flip reaches an open tab on its next
+full page load — there is no polling.
+
+Three constraints worth knowing before you touch any of it:
+
+- Every field needs a `default`, and **every nested group needs `default: {}`** — `Value.Default`
+  only recurses into objects that already exist, so a group without one resolves to `{}` and
+  every flag inside it silently goes missing whenever the build config omits it.
+- **Never validate config in browser code.** `strip-typebox.ts` swaps `@sinclair/typebox` for a
+  no-op Proxy in the `client` environment. Node-only helpers live in `@repo/shared/node`, kept
+  out of the `@repo/shared` barrel on purpose.
+- **Config never breaks the app.** A failed fetch falls back to the baked defaults; the API keeps
+  the last known-good config when the file is unreadable or invalid. Preserve both fallbacks.
+
+Use the `feature-flags` agent (`.claude/agents/feature-flags.md`) to add, remove or audit a flag
+— it has the full checklist, the remaining gotchas, and the verification recipes (`pnpm check`
+cannot tell you a flag actually works).
+
 ## Adding a new environment variable
 
 **Frontend (`apps/fe`):**
@@ -218,4 +361,51 @@ Never add env variables in only one place — schema, type declaration, and exam
 2. Export it from `packages/shared/src/index.ts`
 3. Attach the handler in `apps/api/src/routes/<domain>/index.ts`
 4. Call it on the frontend with `createApiCall(route)` from `apps/fe/src/common/libs/api`
-5. Add an MSW handler in `apps/fe/src/mocks/handlers/<domain>.ts`
+5. Add an MSW handler in `apps/fe/src/mocks/handlers/<domain>.ts`, and register it in
+   `src/mocks/browser.ts` and `.storybook/preview.tsx` if every page needs it
+
+If the endpoint's response should be runtime-configurable rather than fixed, see
+[Runtime client configuration and feature flags](#runtime-client-configuration-and-feature-flags).
+
+## Proposing documentation for agents
+
+At the end of any non-trivial task, **suggest what should be documented for future agents** —
+then stop. Propose; do not silently write docs that were not asked for. A short list at the end
+of your response is the right format:
+
+```
+Worth documenting:
+- <what> → <where> — <why it is not obvious from the code>
+```
+
+**Propose an item when it is a constraint or failure mode that cost you a retry**, and a future
+agent would hit it the same way. Specifically:
+
+- an approach that looks correct, passes `pnpm check`, and silently does nothing
+- a library behaviour that contradicts the obvious reading of its API (`Value.Check` ignoring
+  unknown keys; `Value.Default` not recursing into absent objects)
+- an invariant that a plausible future edit would quietly break (re-exporting `@repo/shared/node`
+  from the barrel; replacing the merge guard with a spread)
+- a verification recipe that is the only way to see whether something actually worked
+- a decision the user made that the code cannot express — why once-per-page-load and not polling
+
+**Do not propose** what the code already states, what git history records, what the library's own
+docs cover, or anything specific to the single task you just did. "Added a config endpoint" is
+not documentation. "The config endpoint's response is cleaned before validation because
+`Value.Check` accepts unknown properties" is.
+
+**Where it belongs:**
+
+| Destination | For | Keep it |
+|---|---|---|
+| `CLAUDE.md` | rules that apply across tasks; anything an agent must know *before* choosing an approach | terse — a few lines and a pointer |
+| `.claude/agents/<name>.md` | the deep workflow for one concern: checklists, verification recipes, gotchas | as long as it needs to be |
+| a code comment | why *this* line is the way it is, where the reason is invisible locally | one or two sentences |
+
+Keep `CLAUDE.md` scannable. If a section grows past roughly forty lines, move the detail into an
+agent doc and leave a one-line pointer — that is why `Logging`, `Storybook` and `Accessibility`
+are short sections here and full documents under `.claude/agents/`.
+
+When you do get asked to write the docs, write down the thing that was hard to find out, not a
+description of the feature. Step 3 of [How to approach work here](#how-to-approach-work-here-chain-of-thought)
+— the constraint that forced the design — is almost always the sentence worth keeping.

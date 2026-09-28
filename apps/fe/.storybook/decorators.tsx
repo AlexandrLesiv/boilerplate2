@@ -5,6 +5,7 @@ import { MetaProvider } from '@solidjs/meta';
 import { MemoryRouter, Route, createMemoryHistory } from '@solidjs/router';
 
 import { generalTheme } from '../src/assets/styles/themes.css';
+import { ConfigContext, createConfigStore } from '../src/common/libs/config';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
 import type { Locale } from '../src/common/libs/i18n';
 import { LoggerContext, createLogger } from '../src/common/libs/logger';
@@ -35,7 +36,7 @@ const solidDecorator =
     return decorator;
   };
 
-/** In-memory history seeded with `initialPath`, so param-driven stories start on the right URL. */
+/** Seeds the in-memory history so param-driven stories start on the right URL. */
 const createStoryHistory = (initialPath?: string) => {
   if (!initialPath) return undefined;
   const history = createMemoryHistory();
@@ -67,6 +68,13 @@ const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
   return <I18nContext.Provider value={i18n}>{props.children}</I18nContext.Provider>;
 };
 
+// Same constraint as WithI18n. withPageLayout gets this from RootLayout instead. Stories set
+// flag values via the MSW handler in `src/mocks/handlers/config.ts`.
+const WithConfig = (props: ParentProps) => {
+  const config = createConfigStore();
+  return <ConfigContext.Provider value={config}>{props.children}</ConfigContext.Provider>;
+};
+
 /** For component-level stories: contexts + router, no layout chrome. */
 export const withAppProviders = solidDecorator((Story, { user = null, path = '/*', initialPath }) => (
   <AppProviders user={user}>
@@ -75,7 +83,9 @@ export const withAppProviders = solidDecorator((Story, { user = null, path = '/*
         path={path}
         component={() => (
           <WithI18n>
-            <Story />
+            <WithConfig>
+              <Story />
+            </WithConfig>
           </WithI18n>
         )}
       />

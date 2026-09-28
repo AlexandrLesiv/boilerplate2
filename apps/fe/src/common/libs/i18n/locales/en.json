@@ -30,6 +30,11 @@
       "submitBtn": "Log in",
       "submittingBtn": "Logging in…",
       "errorInvalidCredentials": "Invalid email or password"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "This page doesn't exist or is no longer available.",
+      "backHome": "Back to home"
     }
   }
 }

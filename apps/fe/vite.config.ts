@@ -6,6 +6,7 @@ import devtools from 'solid-devtools/vite';
 import { defineConfig } from 'vite';
 import oxlint from 'vite-plugin-oxlint';
 
+import { defineClientConfiguration } from './vite-plugins/define-client-configuration.ts';
 import { htmlValidatePlugin } from './vite-plugins/html-validate.ts';
 import { serviceWorkerPlugin } from './vite-plugins/service-worker.ts';
 import { stripTypeboxPlugin } from './vite-plugins/strip-typebox.ts';
@@ -41,6 +42,11 @@ export default defineConfig(async () => {
       serviceWorkerPlugin(),
       stripTypeboxPlugin(),
       validateEnvPlugin(),
+      defineClientConfiguration({
+        features: {
+          localeSwitcher: true,
+        },
+      }),
       versionedClientOutputPlugin(appVersion),
       ...clientVisualizerPlugin(),
     ],

@@ -30,6 +30,11 @@
       "submitBtn": "Увійти",
       "submittingBtn": "Вхід…",
       "errorInvalidCredentials": "Неправильна електронна пошта або пароль"
+    },
+    "notFound": {
+      "title": "Сторінку не знайдено",
+      "description": "Ця сторінка не існує або більше недоступна.",
+      "backHome": "На головну"
     }
   }
 }

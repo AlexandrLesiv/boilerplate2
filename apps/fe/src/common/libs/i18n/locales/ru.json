@@ -30,6 +30,11 @@
       "submitBtn": "Войти",
       "submittingBtn": "Вход…",
       "errorInvalidCredentials": "Неверный адрес почты или пароль"
+    },
+    "notFound": {
+      "title": "Страница не найдена",
+      "description": "Эта страница не существует или больше недоступна.",
+      "backHome": "На главную"
     }
   }
 }

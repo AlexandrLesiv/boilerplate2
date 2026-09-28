@@ -15,6 +15,7 @@ Requirements:
 - Styling Edge Cases
 - Storybook
 - URL strategy
+- Animation/transition
 - Layout Decomposition
 - FE Reliability
 - FE Tracebility/logging
