@@ -85,6 +85,7 @@
         "description": "Something went wrong that we didn't anticipate."
       },
       "backHome": "Back to home",
+      "retry": "Try again",
       "support": {
         "prompt": "If this keeps happening, send us the diagnostic logs from this session.",
         "sendLogs": "Send logs to developers"

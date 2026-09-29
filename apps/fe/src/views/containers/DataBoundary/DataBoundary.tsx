@@ -3,10 +3,12 @@ import { ErrorBoundary, Match, Suspense, Switch } from 'solid-js';
 
 import type { ApiResult } from '@/common/libs/api';
 import { useI18n } from '@/common/libs/i18n';
+import { useLogger } from '@/common/libs/logger';
 import type { RenderProp } from '@/common/types';
+import { AppButton } from '@/views/components/Button/AppButton';
 
 import { ErrorState } from '../ErrorState/ErrorState';
-import { errorKindOf, kindForStatus } from '../ErrorState/kinds';
+import { errorKindOf, isRetryableKind, kindForStatus, type ErrorKind } from '../ErrorState/kinds';
 
 const Pending: Component = () => {
   const { t } = useI18n();
@@ -22,6 +24,11 @@ export interface DataBoundaryProps<T> {
   pending?: JSX.Element;
   /** Leave the SSR response status alone — for a failed region inside a page that is otherwise fine. */
   keepStatus?: boolean;
+  /**
+   * Re-runs the failed read, e.g. `() => revalidate(getArticle.key)`. Shown as a "Try again" action
+   * only for kinds where re-sending the same request could plausibly succeed — see `isRetryableKind`.
+   */
+  onRetry?: () => void;
 }
 
 /**
@@ -36,15 +43,53 @@ export interface DataBoundaryProps<T> {
  * anything rendered in that pass would otherwise leak its status into a successful response.
  */
 export const DataBoundary = <T,>(props: DataBoundaryProps<T>): JSX.Element => {
+  const { t } = useI18n();
+  const logger = useLogger();
   const failure = () => (props.result && !props.result.ok ? props.result : undefined);
   const data = () => (props.result?.ok ? props.result.data : undefined);
 
+  const retryAction = (kind: ErrorKind, retry: () => void) =>
+    props.onRetry && isRetryableKind(kind) ? (
+      <AppButton
+        variant="secondary"
+        onClick={() => {
+          logger.event('data-boundary.retry');
+          retry();
+        }}
+      >
+        {t().pages.errors.retry}
+      </AppButton>
+    ) : undefined;
+
   return (
-    <ErrorBoundary fallback={(error) => <ErrorState kind={errorKindOf(error)} keepStatus={props.keepStatus} />}>
+    <ErrorBoundary
+      fallback={(error, reset) => {
+        const kind = errorKindOf(error);
+        return (
+          <ErrorState
+            kind={kind}
+            keepStatus={props.keepStatus}
+            actions={retryAction(kind, () => {
+              props.onRetry?.();
+              reset();
+            })}
+          />
+        );
+      }}
+    >
       <Suspense fallback={props.pending ?? <Pending />}>
         <Switch fallback={props.pending ?? <Pending />}>
           <Match when={failure()}>
-            {(f) => <ErrorState kind={kindForStatus(f().status)} keepStatus={props.keepStatus} />}
+            {(f) => {
+              const kind = kindForStatus(f().status);
+              return (
+                <ErrorState
+                  kind={kind}
+                  keepStatus={props.keepStatus}
+                  actions={retryAction(kind, () => props.onRetry?.())}
+                />
+              );
+            }}
           </Match>
           <Match when={props.result?.ok}>{props.children(() => data() as T)}</Match>
         </Switch>

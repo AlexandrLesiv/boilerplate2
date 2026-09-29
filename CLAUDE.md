@@ -117,20 +117,6 @@ components based on app state, `containers/`.
 - **Styles**: Vanilla Extract `.css.ts` files only. No inline styles, no CSS modules, no Tailwind.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
 
-## Dependency resolution gotcha
-
-`@jridgewell/resolve-uri@3.1.2` orders its exports map `types → browser → require → import`.
-Condition matching is order-sensitive, so a **browser ESM** import matches `browser` first and gets
-`resolve-uri.umd.js`, which has no ESM `default` export. `@jridgewell/trace-mapping` imports it as
-default, and `solid-devtools` pulls trace-mapping into the client graph — so the dev console showed
-`does not provide an export named 'default'` on every page load.
-
-`apps/fe/vite.config.ts` aliases the specifier to `dist/resolve-uri.mjs`, resolved through
-`package.json` because that is the only subpath the package exports. `optimizeDeps.include` does
-**not** fix it: SolidStart's multi-environment setup discovers the dep outside that config and Vite
-keeps serving it raw from `node_modules`. Storybook is unaffected — it loads the same
-`vite.config.ts`, and its own occurrences of this error were stale `node_modules/.cache/storybook`.
-
 ## Node APIs
 
 **Prefer the promise-based API over the sync one.** `node:fs/promises` over `node:fs` sync calls,

@@ -1,9 +1,9 @@
 import { solidStart } from '@solidjs/start/config';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
-import { playwright } from '@vitest/browser-playwright';
-import { defineConfig } from 'vite';
-import oxlint from 'vite-plugin-oxlint';
+import Sonda from 'sonda/vite';
+import { defineConfig, perEnvironmentPlugin } from 'vite-plus';
+import { playwright } from 'vite-plus/test/browser-playwright';
 
 import { defineClientConfiguration } from './vite-plugins/define-client-configuration.ts';
 import { htmlValidatePlugin } from './vite-plugins/html-validate.ts';
@@ -11,7 +11,6 @@ import { serviceWorkerPlugin } from './vite-plugins/service-worker.ts';
 import { stripTypeboxPlugin } from './vite-plugins/strip-typebox.ts';
 import { validateEnvPlugin } from './vite-plugins/validate-env.ts';
 import { versionedClientOutputPlugin } from './vite-plugins/versioned-client-output.ts';
-import { clientVisualizerPlugin } from './vite-plugins/visualizer.ts';
 
 /// <reference types="vitest/config" />
 import { exec } from 'node:child_process';
@@ -22,6 +21,10 @@ const execAsync = promisify(exec);
 export default defineConfig(async () => {
   const appVersion = process.env['npm_package_version'] ?? 'unknown';
   const appName = process.env['npm_package_name'] ?? 'app';
+  // Sonda reads real source maps to size modules, unlike the plugin it replaced — so unlike that
+  // one, it can't just sit in the plugins array unconditionally without shipping sourcemaps in
+  // every production build. Opt in with `ANALYZE=true pnpm build`.
+  const analyze = process.env['ANALYZE'] === 'true';
 
   let gitHash = 'unknown';
   try {
@@ -35,7 +38,6 @@ export default defineConfig(async () => {
     plugins: [
       vanillaExtractPlugin(),
       ...solidStart({ ssr: true, middleware: './src/middleware.ts' }),
-      oxlint(),
       htmlValidatePlugin(),
       serviceWorkerPlugin(),
       stripTypeboxPlugin(),
@@ -46,12 +48,21 @@ export default defineConfig(async () => {
         },
       }),
       versionedClientOutputPlugin(appVersion),
-      ...clientVisualizerPlugin(),
+      // Sonda's plain Vite integration has no client/server filter (that's framework-integration
+      // only) — it runs on every environment's build pass. Scope it to `client` with Vite's own
+      // environment API rather than the report-picking the caller would otherwise have to do.
+      analyze &&
+        perEnvironmentPlugin('sonda-client-only', (environment) =>
+          environment.name === 'client' ? Sonda({ gzip: true }) : false
+        ),
     ],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
       __APP_NAME__: JSON.stringify(appName),
       __GIT_HASH__: JSON.stringify(gitHash),
+    },
+    build: {
+      sourcemap: analyze,
     },
     css: {
       transformer: 'lightningcss',

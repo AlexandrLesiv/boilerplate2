@@ -11,6 +11,7 @@ Requirements:
 - FE Performance
 - BE Performance
 - Accessibility
+- All charts should have textual representation
 - Design System Compliance
 - Functional Edge Cases
 - Styling Edge Cases

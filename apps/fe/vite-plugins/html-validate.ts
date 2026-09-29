@@ -15,7 +15,11 @@ export const htmlValidatePlugin = (): Plugin => {
         res.end = (chunk?: unknown, ...rest: unknown[]) => {
           const contentType = res.getHeader('content-type');
           if (typeof contentType === 'string' && contentType.includes('text/html') && chunk) {
-            const html = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
+            const html = Buffer.isBuffer(chunk)
+              ? chunk.toString('utf-8')
+              : typeof chunk === 'string'
+                ? chunk
+                : JSON.stringify(chunk);
             validator
               .validateString(html)
               .then((report) => {
@@ -26,7 +30,7 @@ export const htmlValidatePlugin = (): Plugin => {
                     ) +
                       report.results
                         .flatMap((r) => r.messages)
-                        .map((m) => `  ${pc.cyan(m.ruleId ?? 'unknown')} ${m.message} (line ${m.line}:${m.col})`)
+                        .map((m) => `  ${pc.cyan(m.ruleId ?? 'unknown')} ${m.message} (line ${m.line}:${m.column})`)
                         .join('\n')
                   );
                 }

@@ -44,18 +44,22 @@ export type RouteResponse<S extends RouteSchema> = S['response'] extends { 200: 
   ? Static<S['response'][200]>
   : unknown;
 
+/** Route params/querystring values are primitives in practice; objects fall back to JSON rather than `[object Object]`. */
+const toUrlValue = (value: unknown): string =>
+  typeof value === 'object' && value !== null
+    ? JSON.stringify(value)
+    : String((value as string | number | boolean | undefined) ?? '');
+
 export const buildRouteUrl = (
   url: string,
   params?: Record<string, unknown>,
   querystring?: Record<string, unknown>
 ): string => {
-  const path = params
-    ? url.replace(/:([^/]+)/g, (_, key: string) => encodeURIComponent(String(params[key] ?? '')))
-    : url;
+  const path = params ? url.replace(/:([^/]+)/g, (_, key: string) => encodeURIComponent(toUrlValue(params[key]))) : url;
   const full = new URL(`${apiBaseUrl}${path}`);
   if (querystring) {
     for (const [key, value] of Object.entries(querystring)) {
-      if (value !== undefined && value !== null) full.searchParams.set(key, String(value));
+      if (value !== undefined && value !== null) full.searchParams.set(key, toUrlValue(value));
     }
   }
   return full.toString();

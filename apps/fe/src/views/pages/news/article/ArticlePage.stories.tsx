@@ -3,6 +3,7 @@ import { articleRoute, type Story as Article } from '@repo/shared';
 import type { HttpResponseResolver } from 'msw';
 import { http, HttpResponse } from 'msw';
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
+import { expect } from 'storybook/test';
 
 import { withPageLayout } from '../../../../../.storybook/decorators';
 import ArticlePage from './ArticlePage';
@@ -71,6 +72,24 @@ export const ServerError500: Story = articleStory(104, () =>
 export const ServerError503: Story = articleStory(105, () =>
   HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 })
 );
+
+/** First request fails, second succeeds — exercises the DataBoundary "Try again" action. */
+export const RetrySucceeds: Story = (() => {
+  let attempt = 0;
+  return {
+    ...articleStory(119, () => {
+      attempt += 1;
+      return attempt === 1
+        ? HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 })
+        : ok(baseArticle(119));
+    }),
+    play: async ({ canvas, userEvent }) => {
+      await expect(await canvas.findByText('503')).toBeInTheDocument();
+      await userEvent.click(canvas.getByRole('button', { name: 'Try again' }));
+      await expect(await canvas.findByRole('link', { name: 'Back to news' })).toBeInTheDocument();
+    },
+  };
+})();
 
 // ─── network errors ──────────────────────────────────────────────────────────
 

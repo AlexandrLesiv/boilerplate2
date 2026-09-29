@@ -2,7 +2,7 @@ import type { Component } from 'solid-js';
 import { Show } from 'solid-js';
 
 import { Title } from '@solidjs/meta';
-import { A, createAsync, useParams } from '@solidjs/router';
+import { A, createAsync, revalidate, useParams } from '@solidjs/router';
 
 import { format, useI18n } from '@/common/libs/i18n';
 import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
@@ -15,7 +15,7 @@ const ArticlePage: Component = () => {
   const article = createAsync(() => getArticle({ params: { id: Number(params.id) } }));
 
   return (
-    <DataBoundary result={article()}>
+    <DataBoundary result={article()} onRetry={() => revalidate(getArticle.key)}>
       {(res) => {
         const a = () => res().data;
         return (

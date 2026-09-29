@@ -48,3 +48,17 @@ export const errorKindOf = (error: unknown): ErrorKind => {
   if (error instanceof TypeError) return 'offline';
   return 'unknown';
 };
+
+const RETRYABLE_KINDS: ReadonlySet<ErrorKind> = new Set([
+  '408',
+  '429',
+  '500',
+  '502',
+  '503',
+  '504',
+  'offline',
+  'unknown',
+]);
+
+/** Excludes kinds where re-sending the same request can't change the outcome (bad input, auth, missing resource). */
+export const isRetryableKind = (kind: ErrorKind): boolean => RETRYABLE_KINDS.has(kind);

@@ -45,7 +45,7 @@ export const DecorativeLoadFailure: Story = {
   args: { src: '/assets/does-not-exist.png', alt: '' },
   play: async ({ canvas }) => {
     await canvas.findByText(/image unavailable/i);
-    expect(canvas.queryByRole('img')).toBeNull();
+    await expect(canvas.queryByRole('img')).toBeNull();
   },
 };
 
@@ -54,7 +54,7 @@ export const Preloaded: Story = {
   args: { preload: true },
   play: async ({ canvas }) => {
     await canvas.findByRole('img', { name: /the site favicon, enlarged/i });
-    expect(document.head.querySelector('link[rel="preload"][as="image"][fetchpriority="high"]')).not.toBeNull();
+    await expect(document.head.querySelector('link[rel="preload"][as="image"][fetchpriority="high"]')).not.toBeNull();
   },
 };
 

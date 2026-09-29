@@ -1,8 +1,7 @@
 import type { Component } from 'solid-js';
 import { For } from 'solid-js';
 
-import { createAsync } from '@solidjs/router';
-import { A } from '@solidjs/router';
+import { A, createAsync, revalidate } from '@solidjs/router';
 
 import { format, useI18n } from '@/common/libs/i18n';
 import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
@@ -19,7 +18,11 @@ const NewsPage: Component = () => {
   return (
     <div>
       <h1>{t().pages.news.title}</h1>
-      <DataBoundary result={response()} pending={<p>{t().pages.news.loading}</p>}>
+      <DataBoundary
+        result={response()}
+        pending={<p>{t().pages.news.loading}</p>}
+        onRetry={() => revalidate(getTopStories.key)}
+      >
         {(page) => (
           <ol class={styles.list}>
             <For each={page().data}>

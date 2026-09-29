@@ -33,7 +33,7 @@ const LoginPage: Component = () => {
       setUser(user);
       logger.event('login.success');
       logger.navigation('/');
-      void navigate('/');
+      navigate('/');
     } catch (err) {
       logger.error('login.failed', { reason: String(err) });
       setError(t().pages.login.errorInvalidCredentials);
