@@ -1,5 +1,5 @@
 import type { JSX, ParentProps } from 'solid-js';
-import { untrack } from 'solid-js';
+import { onMount, untrack } from 'solid-js';
 
 import { MetaProvider } from '@solidjs/meta';
 import { MemoryRouter, Route, createMemoryHistory, query } from '@solidjs/router';
@@ -9,6 +9,7 @@ import type { ClientConfig } from '@repo/shared';
 import { AppProvider } from '@/AppProvider';
 import { generalTheme } from '@/assets/styles/themes.css';
 import { ConfigContext, createConfigStore } from '@/common/libs/config';
+import { ConnectivityContext, createConnectivityStore } from '@/common/libs/connectivity';
 import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/common/libs/i18n';
 import type { Locale } from '@/common/libs/i18n';
 import { LoggerContext, createLogger } from '@/common/libs/logger';
@@ -59,12 +60,15 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
   const initialUser = untrack(() => props.user);
   if (initialUser) store.setUser(initialUser);
   const logger = createLogger();
+  const connectivity = createConnectivityStore();
 
   return (
     <MetaProvider>
       <div class={generalTheme}>
         <LoggerContext.Provider value={logger}>
-          <RootStoreContext.Provider value={store}>{props.children}</RootStoreContext.Provider>
+          <RootStoreContext.Provider value={store}>
+            <ConnectivityContext.Provider value={connectivity}>{props.children}</ConnectivityContext.Provider>
+          </RootStoreContext.Provider>
         </LoggerContext.Provider>
       </div>
     </MetaProvider>
@@ -118,6 +122,8 @@ export interface FullAppProps {
   path?: string;
   /** Feature flag overrides the mocked config endpoint should serve. */
   features?: Partial<ClientConfig['features']>;
+  /** Simulates the browser going offline right after boot, via a real `window` `offline` event. */
+  offline?: boolean;
 }
 
 /**
@@ -138,6 +144,7 @@ export const FullApp = (props: FullAppProps): JSX.Element => {
   // control change, so there is nothing here to react to.
   const path = untrack(() => props.path) ?? '/';
   const features = untrack(() => props.features);
+  const offline = untrack(() => props.offline);
 
   setClientConfigOverrides(features);
   // The previous instance's cached config would otherwise be served to this one.
@@ -145,6 +152,15 @@ export const FullApp = (props: FullAppProps): JSX.Element => {
 
   const history = createMemoryHistory();
   history.set({ value: path, replace: true });
+
+  // Deferred a microtask past this component's own onMount: AppProvider (and the connectivity
+  // store's `offline`/`online` listeners it registers via its own onMount) is a JSX child
+  // rendered below, so its onMount runs after this one — dispatching synchronously here would
+  // fire before the listener exists.
+  onMount(() => {
+    if (!offline) return;
+    queueMicrotask(() => window.dispatchEvent(new Event('offline')));
+  });
 
   return (
     <MetaProvider>

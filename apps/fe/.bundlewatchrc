@@ -1,12 +1,12 @@
 {
   "files": [
     {
-      "path": "dist/client/_build/assets/**/*.js",
+      "path": "dist/client/*/assets/**/*.js",
       "maxSize": "120kB",
       "compression": "none"
     },
     {
-      "path": "dist/client/_build/assets/**/*.css",
+      "path": "dist/client/*/assets/**/*.css",
       "maxSize": "60kB",
       "compression": "none"
     }

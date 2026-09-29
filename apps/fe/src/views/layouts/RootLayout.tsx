@@ -18,6 +18,7 @@ import type { AppRouteInfo } from '@/common/libs/router';
 import { JsonLd } from '@/common/libs/seo/JsonLd';
 
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
+import { OfflineStatus } from '../containers/OfflineStatus/OfflineStatus';
 import * as styles from './styles.css';
 
 const RootLayout: Component<ParentProps> = (props) => {
@@ -95,6 +96,7 @@ const RootLayout: Component<ParentProps> = (props) => {
                 <LocaleSwitcher />
               </Show>
             </header>
+            <OfflineStatus />
             <main class={styles.main}>
               <Suspense>{props.children}</Suspense>
             </main>

@@ -5,6 +5,7 @@ import Sonda from 'sonda/vite';
 import { defineConfig, perEnvironmentPlugin } from 'vite-plus';
 import { playwright } from 'vite-plus/test/browser-playwright';
 
+import pkg from './package.json';
 import { defineClientConfiguration } from './vite-plugins/define-client-configuration.ts';
 import { htmlValidatePlugin } from './vite-plugins/html-validate.ts';
 import { serviceWorkerPlugin } from './vite-plugins/service-worker.ts';
@@ -19,8 +20,8 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 
 export default defineConfig(async () => {
-  const appVersion = process.env['npm_package_version'] ?? 'unknown';
-  const appName = process.env['npm_package_name'] ?? 'app';
+  const appVersion = pkg.version;
+  const appName = pkg.name;
   // Sonda reads real source maps to size modules, unlike the plugin it replaced — so unlike that
   // one, it can't just sit in the plugins array unconditionally without shipping sourcemaps in
   // every production build. Opt in with `ANALYZE=true pnpm build`.

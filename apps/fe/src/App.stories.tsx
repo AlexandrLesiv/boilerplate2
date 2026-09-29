@@ -1,6 +1,7 @@
 import { Show } from 'solid-js';
 
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
+import { expect } from 'storybook/test';
 
 import { FullApp } from '../.storybook/decorators';
 import { hackernewsStories } from '../.storybook/mocks/handlers/hackernews';
@@ -11,6 +12,7 @@ type AppArgs = {
   locale: Locale;
   page: string;
   localeSwitcher: boolean;
+  offline: boolean;
 };
 
 const PAGES = ['/', '/news', `/news/${hackernewsStories[0]!.id}`, '/login'];
@@ -27,18 +29,24 @@ const meta: Meta<AppArgs> = {
     locale: { control: 'radio', options: [...SUPPORTED_LOCALES], name: 'Locale' },
     page: { control: 'select', options: PAGES, name: 'Page' },
     localeSwitcher: { control: 'boolean', name: 'feature: localeSwitcher' },
+    offline: { control: 'boolean', name: 'Offline' },
   },
   args: {
     locale: DEFAULT_LOCALE,
     page: '/',
     localeSwitcher: true,
+    offline: false,
   },
   // Keyed Show, so every control change remounts the app: reading the args here also makes
   // Storybook's story memo track them.
   render: (args) => (
-    <Show when={`${args.locale}|${args.page}|${String(args.localeSwitcher)}`} keyed={true}>
+    <Show when={`${args.locale}|${args.page}|${String(args.localeSwitcher)}|${String(args.offline)}`} keyed={true}>
       {(_key: string) => (
-        <FullApp path={localePath(args.page, args.locale)} features={{ localeSwitcher: args.localeSwitcher }} />
+        <FullApp
+          path={localePath(args.page, args.locale)}
+          features={{ localeSwitcher: args.localeSwitcher }}
+          offline={args.offline}
+        />
       )}
     </Show>
   ),
@@ -49,3 +57,11 @@ type Story = StoryObj<AppArgs>;
 
 /** Drive locale, page and feature flags from the controls panel. */
 export const Default: Story = {};
+
+/** The "Offline" control simulates the browser going offline right after boot. */
+export const OfflineOnBoot: Story = {
+  args: { offline: true },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole('status')).toHaveTextContent(/offline/i);
+  },
+};

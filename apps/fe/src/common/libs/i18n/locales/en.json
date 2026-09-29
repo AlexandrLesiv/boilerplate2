@@ -97,6 +97,10 @@
     "image": {
       "fallbackLabel": "Image unavailable",
       "fallbackAriaLabel": "Image failed to load: {alt}"
+    },
+    "offline": {
+      "message": "You're offline. Some features may not work until you reconnect.",
+      "backOnline": "You're back online."
     }
   }
 }
