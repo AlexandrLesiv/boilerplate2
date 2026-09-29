@@ -4,7 +4,7 @@ import { Show } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
 
 import { localeFromParams, localePath, useI18n } from '../../../common/libs/i18n';
-import { actionRow, container, description, statusCode, title } from './styles.css';
+import * as styles from './styles.css';
 import { SupportPrompt } from './SupportPrompt';
 
 export interface ErrorLayoutProps {
@@ -28,13 +28,13 @@ export const ErrorLayout: Component<ErrorLayoutProps> = (props) => {
   const params = useParams<{ locale?: string }>();
 
   return (
-    <section class={container}>
+    <section class={styles.container}>
       <Show when={props.status !== undefined}>
-        <p class={statusCode}>{props.status}</p>
+        <p class={styles.statusCode}>{props.status}</p>
       </Show>
-      <h1 class={title}>{props.title}</h1>
-      <p class={description}>{props.description}</p>
-      <div class={actionRow}>
+      <h1 class={styles.title}>{props.title}</h1>
+      <p class={styles.description}>{props.description}</p>
+      <div class={styles.actionRow}>
         <A href={localePath('/', localeFromParams(params))}>{t().pages.errors.backHome}</A>
         {props.actions}
       </div>

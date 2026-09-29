@@ -92,6 +92,10 @@
     }
   },
   "common": {
-    "loading": "Загрузка…"
+    "loading": "Загрузка…",
+    "image": {
+      "fallbackLabel": "Изображение недоступно",
+      "fallbackAriaLabel": "Не удалось загрузить изображение: {alt}"
+    }
   }
 }

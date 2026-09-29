@@ -3,7 +3,7 @@ import type { Component } from 'solid-js';
 import { useI18n } from '../../../common/libs/i18n';
 import { useLogger } from '../../../common/libs/logger';
 import { AppButton } from '../Button/AppButton';
-import { supportPrompt, supportText } from './styles.css';
+import * as styles from './styles.css';
 
 /**
  * Shared across every error page. Sending is not wired up yet — the click is recorded so the
@@ -18,8 +18,8 @@ export const SupportPrompt: Component = () => {
   };
 
   return (
-    <div class={supportPrompt}>
-      <p class={supportText}>{t().pages.errors.support.prompt}</p>
+    <div class={styles.supportPrompt}>
+      <p class={styles.supportText}>{t().pages.errors.support.prompt}</p>
       <AppButton variant="secondary" onClick={handleSend}>
         {t().pages.errors.support.sendLogs}
       </AppButton>

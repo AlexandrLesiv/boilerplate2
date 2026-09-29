@@ -3,6 +3,10 @@
     "playwright": {
       "command": "pnpx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "storybook": {
+      "url": "http://localhost:6006/mcp",
+      "type": "http"
     }
   }
 }

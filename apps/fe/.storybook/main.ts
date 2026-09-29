@@ -10,6 +10,7 @@ const config: StorybookConfig = {
     '@storybook/addon-a11y',
     '@storybook/addon-docs',
     'storybook/viewport',
+    '@storybook/addon-mcp',
   ],
   framework: 'storybook-solidjs-vite',
   async viteFinal(config) {

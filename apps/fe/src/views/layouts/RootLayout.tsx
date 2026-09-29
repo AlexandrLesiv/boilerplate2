@@ -17,7 +17,7 @@ import type { Locale } from '../../common/libs/i18n';
 import type { AppRouteInfo } from '../../common/libs/router';
 import { JsonLd } from '../../common/libs/seo/JsonLd';
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
-import { header, headerLeft, main, nav } from './styles.css';
+import * as styles from './styles.css';
 
 const RootLayout: Component<ParentProps> = (props) => {
   const params = useParams<{ locale?: string }>();
@@ -79,10 +79,10 @@ const RootLayout: Component<ParentProps> = (props) => {
             Without it the nav's t() renders once server-side as the en default. */}
         <Suspense>
           <div>
-            <header class={header}>
-              <div class={headerLeft}>
+            <header class={styles.header}>
+              <div class={styles.headerLeft}>
                 <strong>SolidJS App</strong>
-                <nav class={nav}>
+                <nav class={styles.nav}>
                   <A href={pfx() || '/'} end>
                     {i18n.t().nav.home}
                   </A>
@@ -94,7 +94,7 @@ const RootLayout: Component<ParentProps> = (props) => {
                 <LocaleSwitcher />
               </Show>
             </header>
-            <main class={main}>
+            <main class={styles.main}>
               <Suspense>{props.children}</Suspense>
             </main>
           </div>

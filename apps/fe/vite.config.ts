@@ -2,7 +2,6 @@ import { solidStart } from '@solidjs/start/config';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import { playwright } from '@vitest/browser-playwright';
-import devtools from 'solid-devtools/vite';
 import { defineConfig } from 'vite';
 import oxlint from 'vite-plugin-oxlint';
 
@@ -35,7 +34,6 @@ export default defineConfig(async () => {
   return {
     plugins: [
       vanillaExtractPlugin(),
-      devtools({ autoname: true }),
       ...solidStart({ ssr: true, middleware: './src/middleware.ts' }),
       oxlint(),
       htmlValidatePlugin(),

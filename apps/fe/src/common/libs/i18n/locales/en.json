@@ -92,6 +92,10 @@
     }
   },
   "common": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "image": {
+      "fallbackLabel": "Image unavailable",
+      "fallbackAriaLabel": "Image failed to load: {alt}"
+    }
   }
 }

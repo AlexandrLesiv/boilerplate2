@@ -6,6 +6,7 @@ Requirements:
 - Usability
 - Web Vitals
 - Layout Stability
+- Every state change should happen on user interactions
 - Code Quality
 - FE Performance
 - BE Performance

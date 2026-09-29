@@ -97,6 +97,20 @@ verify, and do not describe an unverified path as working.
 - **Styles**: Vanilla Extract `.css.ts` files only. No inline styles, no CSS modules, no Tailwind.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
 
+## Dependency resolution gotcha
+
+`@jridgewell/resolve-uri@3.1.2` orders its exports map `types → browser → require → import`.
+Condition matching is order-sensitive, so a **browser ESM** import matches `browser` first and gets
+`resolve-uri.umd.js`, which has no ESM `default` export. `@jridgewell/trace-mapping` imports it as
+default, and `solid-devtools` pulls trace-mapping into the client graph — so the dev console showed
+`does not provide an export named 'default'` on every page load.
+
+`apps/fe/vite.config.ts` aliases the specifier to `dist/resolve-uri.mjs`, resolved through
+`package.json` because that is the only subpath the package exports. `optimizeDeps.include` does
+**not** fix it: SolidStart's multi-environment setup discovers the dep outside that config and Vite
+keeps serving it raw from `node_modules`. Storybook is unaffected — it loads the same
+`vite.config.ts`, and its own occurrences of this error were stale `node_modules/.cache/storybook`.
+
 ## Node APIs
 
 **Prefer the promise-based API over the sync one.** `node:fs/promises` over `node:fs` sync calls,
@@ -247,6 +261,12 @@ const candidate = Value.Clean(schema, Value.Default(schema, input));
   `createAsync` re-request, so a flag change would otherwise be served the cached config
 - In `play`, make the first query `await canvas.findBy*` — page content sits behind
   `RootLayout`'s `<Suspense>` and is absent on the first tick
+- If `play` needs `expect`, import it from `storybook/test`, **never `vitest`**. The
+  `vitest`-sourced `expect` only initializes its matcher runtime inside the actual vitest worker —
+  Storybook's own dev server renders the story module directly in the browser, without that init,
+  so the module-level import alone crashes every story in the file with
+  `Cannot read properties of undefined (reading 'customEqualityTesters')`, even stories with no
+  `play` function. `storybook/test` re-exports a self-contained `expect` that works in both places
 - Nothing in the suite currently exercises navigation: no story clicks a link, so in-app routing,
   the list/article mock agreement, and `LocaleSwitcher`'s hrefs are unverified
 - Run the stories as tests with `pnpm --filter fe vitest --project=storybook --run`
@@ -334,6 +354,11 @@ actions without touching the others.
 either half is a type error rather than a runtime blank.
 
 `notFoundRoute` (`path: '*'`) is the catch-all and **must stay last** in `appRoutes`.
+
+**Image component:** `views/components/Image/` wraps `<img>` with mandatory `alt`/`width`/`height`
+and a fallback for load failures — see `views/components/Image/AGENTS.md` for the constraints
+that shaped it (why there's no inline `aspect-ratio`, why SSR can never show the fallback, why
+`preload` is one prop).
 
 ## Running locally
 

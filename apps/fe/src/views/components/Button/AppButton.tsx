@@ -1,7 +1,7 @@
 import type { Component, JSX } from 'solid-js';
 import { splitProps } from 'solid-js';
 
-import { buttonBase, buttonVariants } from './styles.css';
+import * as styles from './styles.css';
 
 interface AppButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
@@ -12,7 +12,10 @@ export const AppButton: Component<AppButtonProps> = (props) => {
   const variant = () => local.variant ?? 'primary';
 
   return (
-    <button class={[buttonBase, buttonVariants[variant()], local.class].filter(Boolean).join(' ')} {...rest}>
+    <button
+      class={[styles.buttonBase, styles.buttonVariants[variant()], local.class].filter(Boolean).join(' ')}
+      {...rest}
+    >
       {local.children}
     </button>
   );

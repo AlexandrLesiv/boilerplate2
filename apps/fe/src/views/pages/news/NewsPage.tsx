@@ -7,7 +7,7 @@ import { A } from '@solidjs/router';
 import { format, useI18n } from '../../../common/libs/i18n';
 import { DataBoundary } from '../../components/DataBoundary/DataBoundary';
 import { getTopStories } from './api';
-import { body, item, list, meta, rank, titleLink } from './styles.css';
+import * as styles from './styles.css';
 
 const NewsPage: Component = () => {
   const { t } = useI18n();
@@ -20,16 +20,16 @@ const NewsPage: Component = () => {
       <h1>{t().pages.news.title}</h1>
       <DataBoundary result={response()} pending={<p>{t().pages.news.loading}</p>}>
         {(page) => (
-          <ol class={list}>
+          <ol class={styles.list}>
             <For each={page().data}>
               {(story, i) => (
-                <li class={item}>
-                  <span class={rank}>{i() + 1}.</span>
-                  <div class={body}>
-                    <A class={titleLink} href={String(story.id)}>
+                <li class={styles.item}>
+                  <span class={styles.rank}>{i() + 1}.</span>
+                  <div class={styles.body}>
+                    <A class={styles.titleLink} href={String(story.id)}>
                       {story.title}
                     </A>
-                    <div class={meta}>
+                    <div class={styles.meta}>
                       <span>{format(t().pages.news.score, { n: story.score })}</span>
                       <span>{format(t().pages.news.by, { user: story.by })}</span>
                       <a href={hnItemUrl(story.id)} target="_blank" rel="noopener noreferrer">

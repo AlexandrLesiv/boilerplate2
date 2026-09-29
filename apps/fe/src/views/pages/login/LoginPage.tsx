@@ -10,7 +10,7 @@ import { useI18n } from '../../../common/libs/i18n';
 import { useLogger } from '../../../common/libs/logger';
 import { useRootStore } from '../../../common/libs/stores/root';
 import { AppButton } from '../../components/Button/AppButton';
-import { container, title, form, fieldGroup, input, errorText } from './styles.css';
+import * as styles from './styles.css';
 
 const LoginPage: Component = () => {
   const navigate = useNavigate();
@@ -42,10 +42,10 @@ const LoginPage: Component = () => {
   };
 
   return (
-    <div class={container}>
-      <h1 class={title}>{t().pages.login.title}</h1>
-      <form onSubmit={handleSubmit} class={form}>
-        <div class={fieldGroup}>
+    <div class={styles.container}>
+      <h1 class={styles.title}>{t().pages.login.title}</h1>
+      <form onSubmit={handleSubmit} class={styles.form}>
+        <div class={styles.fieldGroup}>
           <label for="email">{t().pages.login.emailLabel}</label>
           <input
             id="email"
@@ -54,10 +54,10 @@ const LoginPage: Component = () => {
             value={email()}
             onInput={(e) => setEmail(e.target.value)}
             required
-            class={input}
+            class={styles.input}
           />
         </div>
-        <div class={fieldGroup}>
+        <div class={styles.fieldGroup}>
           <label for="password">{t().pages.login.passwordLabel}</label>
           <input
             id="password"
@@ -66,12 +66,12 @@ const LoginPage: Component = () => {
             value={password()}
             onInput={(e) => setPassword(e.target.value)}
             required
-            class={input}
+            class={styles.input}
           />
         </div>
         <Show when={error()}>
           {(msg) => (
-            <p role="alert" class={errorText}>
+            <p role="alert" class={styles.errorText}>
               {msg()}
             </p>
           )}
