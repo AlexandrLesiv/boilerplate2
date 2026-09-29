@@ -368,6 +368,13 @@ and a fallback for load failures — see `views/components/Image/AGENTS.md` for 
 that shaped it (why there's no inline `aspect-ratio`, why SSR can never show the fallback, why
 `preload` is one prop).
 
+**Timed loading indicator:** `views/containers/TimedReveal/` is pure "nothing → loading →
+taking-longer-than-usual" timing orchestration with no look of its own; `views/components/TimedLoader/`
+is the concrete spinner-and-copy skin built on it, used by `DataBoundary`'s pending state. See
+`views/components/TimedLoader/AGENTS.md` for the Nielsen/UX-research grounding behind the default
+thresholds, why there's no fake progress bar, and a Storybook-testing gotcha (waiting on
+`findByRole('status')` races the real timers, since that region mounts before either stage does).
+
 ## Running locally
 
 ```sh

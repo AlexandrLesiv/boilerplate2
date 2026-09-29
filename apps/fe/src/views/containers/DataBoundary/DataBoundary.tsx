@@ -1,19 +1,17 @@
 import type { Component, JSX } from 'solid-js';
-import { ErrorBoundary, Match, Suspense, Switch } from 'solid-js';
+import { createMemo, ErrorBoundary, Match, Suspense, Switch } from 'solid-js';
 
 import type { ApiResult } from '@/common/libs/api';
 import { useI18n } from '@/common/libs/i18n';
 import { useLogger } from '@/common/libs/logger';
 import type { RenderProp } from '@/common/types';
 import { AppButton } from '@/views/components/Button/AppButton';
+import { TimedLoader } from '@/views/components/TimedLoader/TimedLoader';
 
 import { ErrorState } from '../ErrorState/ErrorState';
 import { errorKindOf, isRetryableKind, kindForStatus, type ErrorKind } from '../ErrorState/kinds';
 
-const Pending: Component = () => {
-  const { t } = useI18n();
-  return <p aria-busy="true">{t().common.loading}</p>;
-};
+const Pending: Component = () => <TimedLoader />;
 
 export interface DataBoundaryProps<T> {
   /** Outcome from a `createSafeApiCall`. `undefined` while it loads. */
@@ -81,12 +79,12 @@ export const DataBoundary = <T,>(props: DataBoundaryProps<T>): JSX.Element => {
         <Switch fallback={props.pending ?? <Pending />}>
           <Match when={failure()}>
             {(f) => {
-              const kind = kindForStatus(f().status);
+              const kind = createMemo(() => kindForStatus(f().status, f().offline));
               return (
                 <ErrorState
-                  kind={kind}
+                  kind={kind()}
                   keepStatus={props.keepStatus}
-                  actions={retryAction(kind, () => props.onRetry?.())}
+                  actions={retryAction(kind(), () => props.onRetry?.())}
                 />
               );
             }}

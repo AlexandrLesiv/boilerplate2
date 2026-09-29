@@ -21,9 +21,12 @@ export const createApiCall = <S extends RouteSchema>(route: SharedApiRoute<S>) =
 
 /**
  * A request outcome as data. On failure, `status` is `null` when the request never got a response,
- * and `payload` is whatever body the server sent with it.
+ * and `payload` is whatever body the server sent with it. `offline` is only meaningful alongside a
+ * `null` status — see `createSafeApiCall`'s catch for why it's resolved there and not later.
  */
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number | null; payload?: unknown };
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number | null; payload?: unknown; offline?: boolean };
 
 /**
  * GET that reports an expected failure as a resolved `ApiResult` rather than throwing.
@@ -39,8 +42,13 @@ export const createSafeApiCall = <S extends RouteSchema>(route: SharedApiRoute<S
       return { ok: true, data: await apiFetch(route, undefined, options as CallOptions<S>) };
     } catch (error) {
       if (error instanceof ApiError) return { ok: false, status: error.status, payload: error.payload };
-      // A failed fetch rejects with a TypeError; there is no response to report a status from.
-      if (error instanceof TypeError) return { ok: false, status: null };
+      if (error instanceof TypeError) {
+        // Resolved here, once, at the moment this specific attempt failed — not by the component
+        // that renders the result. That render also runs during client hydration of this same SSR
+        // failure, where `import.meta.env.SSR`/`navigator.onLine` would disagree with the server's
+        // answer for identical data, and hydration never repaints to reconcile that disagreement.
+        return { ok: false, status: null, offline: import.meta.env.SSR ? undefined : !navigator.onLine };
+      }
       throw error;
     }
   }, apiQueryKey(route));

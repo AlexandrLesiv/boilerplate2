@@ -94,6 +94,7 @@
   },
   "common": {
     "loading": "Завантаження…",
+    "loadingSlow": "Це триває довше, ніж звичайно…",
     "image": {
       "fallbackLabel": "Зображення недоступне",
       "fallbackAriaLabel": "Не вдалося завантажити зображення: {alt}"

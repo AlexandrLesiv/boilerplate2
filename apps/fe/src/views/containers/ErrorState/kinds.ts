@@ -32,20 +32,40 @@ export const statusForKind = (kind: ErrorKind): number =>
   isKnownKind(kind) && /^\d+$/.test(kind) ? Number(kind) : 500;
 
 /**
- * A failed `fetch` rejects with a TypeError (`Failed to fetch` in the browser, `fetch failed` under
- * SSR), which is the only signal we get that the server was unreachable rather than unhappy.
+ * A failed `fetch` rejects with a TypeError (`Failed to fetch` in the browser, `fetch failed`
+ * under SSR), which is the only signal we get that the server was unreachable rather than
+ * unhappy. Under SSR that TypeError means *our own server* couldn't reach the API — a backend
+ * availability problem, not a signal about the end user's device — so it maps to `503`, not
+ * `offline`.
+ *
+ * `offline` must be resolved by the caller *at the moment the fetch failed* (from
+ * `navigator.onLine`, the same signal `OfflineStatus` uses), not here. This function runs during
+ * both the SSR render and the client hydration render of the *same* failed result, and
+ * `import.meta.env.SSR`/`navigator.onLine` differ between those two passes — computing them here
+ * made SSR paint `503` and hydration silently recompute `unknown` for identical data, which Solid
+ * never reconciles (hydration adopts the SSR markup as-is), leaving the page stuck on whichever
+ * kind SSR happened to render. `offline: undefined` means "resolved server-side, no such concept
+ * as the end user's connectivity" — always `503`. `true`/`false` means "resolved client-side,
+ * this is what `navigator.onLine` said at that moment" — a failed fetch while online is something
+ * we can't identify (CORS, DNS, a blocking extension), so it's `unknown` rather than a confident
+ * but likely-wrong claim that the user is offline.
  */
-/** `null` means the request never got a response. */
-export const kindForStatus = (status: number | null): ErrorKind => {
-  if (status === null) return 'offline';
+const noResponseKind = (offline: boolean | undefined): ErrorKind => {
+  if (offline === undefined) return '503';
+  return offline ? 'offline' : 'unknown';
+};
+
+/** `null` means the request never got a response — see `noResponseKind` for what `offline` must be. */
+export const kindForStatus = (status: number | null, offline?: boolean): ErrorKind => {
+  if (status === null) return noResponseKind(offline);
   const kind = String(status);
   if (isKnownKind(kind)) return kind;
   return status >= 500 ? '500' : 'unknown';
 };
 
-export const errorKindOf = (error: unknown): ErrorKind => {
-  if (error instanceof ApiError) return kindForStatus(error.status);
-  if (error instanceof TypeError) return 'offline';
+export const errorKindOf = (error: unknown, offline?: boolean): ErrorKind => {
+  if (error instanceof ApiError) return kindForStatus(error.status, offline);
+  if (error instanceof TypeError) return noResponseKind(offline);
   return 'unknown';
 };
 

@@ -12,6 +12,8 @@ Requirements:
 - BE Performance
 - Accessibility
 - All charts should have textual representation
+- Semantic tags
+- External links are marked
 - Design System Compliance
 - Functional Edge Cases
 - Styling Edge Cases

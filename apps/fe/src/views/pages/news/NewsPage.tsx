@@ -20,7 +20,7 @@ const NewsPage: Component = () => {
       <h1>{t().pages.news.title}</h1>
       <DataBoundary
         result={response()}
-        pending={<p>{t().pages.news.loading}</p>}
+        // pending={<p>{t().pages.news.loading}</p>}
         onRetry={() => revalidate(getTopStories.key)}
       >
         {(page) => (
