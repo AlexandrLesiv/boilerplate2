@@ -1,4 +1,5 @@
-import { defineRoute } from '../../../common/libs/router';
+import { defineRoute } from '@/common/libs/router';
+
 import LoginPage from './LoginPage';
 
 export const loginRoute = defineRoute({

@@ -59,6 +59,18 @@ verify, and do not describe an unverified path as working.
 | `apps/api` | Fastify 5 REST API with Swagger/OpenAPI |
 | `packages/shared` | Shared route contracts, TypeBox schemas, entity types |
 
+`apps/fe/src/views/` splits `components/` (design-system-style primitives with their own visual
+identity — `AppButton`, `Image`, `LocaleSwitcher`) from `containers/` (components whose job is
+behavior/orchestration rather than a look of their own — `DataBoundary`, `ErrorState` and
+everything under it, `NotFound`), as siblings of `layouts/` and `pages/`. The split is about what
+a component *is for*, not who imports it: `ErrorState`'s pages are visually presentational, but
+they stay under `containers/` because they're one cohesive error-handling feature built around
+`ErrorState`'s dispatch logic, not a general-purpose reusable primitive — pulling `ErrorLayout`
+out to `components/` while leaving the dispatcher in `containers/` would fragment that feature
+for no benefit. When adding a component, ask whether it has a visual identity of its own outside
+of any specific data/error flow — if yes, `components/`; if it exists to orchestrate other
+components based on app state, `containers/`.
+
 ## Stack
 
 **Frontend (`apps/fe`)**
@@ -86,6 +98,14 @@ verify, and do not describe an unverified path as working.
 
 - **Arrow functions everywhere** — use `const fn = () => {}` for all functions. `.oxlintrc.json` at the repo root sets `prefer-arrow-callback` and `arrow-body-style` to `error`, and oxlint finds that config by searching upward, so it applies from any workspace. Be aware of the gap: those rules only catch function *expressions* passed as callbacks and redundant arrow bodies — a top-level `function foo() {}` declaration is **not** flagged. That is why `common/libs/stores/root.ts`, `common/libs/router/index.ts` and the `*.stories.tsx` helpers still pass lint; follow the convention in new code rather than copying them.
 - **Exact version pinning** — no `^` or `~` in any `package.json`. Run `pnpm lint:versions` from the repo root; it checks every workspace plus the root.
+- **`@/*` resolves to `apps/fe/src/*`** — configured in both `vite.config.ts` (`resolve.alias`) and
+  `tsconfig.json` (`compilerOptions.paths`); update both together if it ever changes, since Vite
+  and `tsc --noEmit` resolve it independently. Use `@/...` for any import crossing two or more
+  `../` segments (into `common/`, `assets/`, a different `views/` subtree, etc.), including from
+  `.storybook/*` files reaching into `src/`. Keep `./sibling` and a single `../parent` as relative
+  — those are co-located files that move together, and forcing the alias on them adds noise
+  without solving anything. `.storybook/*` importing `.storybook/*` stays relative too: `@` only
+  maps into `src/`, so a story-side import of `.storybook/decorators` has no alias to use.
 - **`createApiCall(route)`** for GET requests — call at module level in the route file, export the result, use with `createAsync` in components and `preload` in the route definition. No locale — GET routes are locale-agnostic.
 - **Never call `fetch` directly in app code** — always go through `createApiCall` / `createMutation`,
   so the call gets URL building, locale headers, perf timing, `apiError` logging and the dev-mode
@@ -251,8 +271,10 @@ const candidate = Value.Clean(schema, Value.Default(schema, input));
 - Stories sit next to the component: `ComponentName.stories.tsx`
 - Set `parameters.msw.handlers` on any story that triggers a network call
 - Use `withPageLayout()` for page stories, `withAppProviders()` for component stories
-- Handler factories live in `src/mocks/handlers/` — reuse them across stories. `allHandlers`
-  (from `src/mocks/handlers/index.ts`) is every endpoint on its happy path
+- Handler factories live in `apps/fe/.storybook/mocks/handlers/` — reuse them across stories.
+  `allHandlers` (from `mocks/handlers/index.ts`) is every endpoint on its happy path. They live
+  under `.storybook/`, not `src/`, because nothing outside Storybook and `.stories.tsx` files
+  imports them — there's no dev-mode "run the app against mocks" path in this repo
 - `App/Full Application` renders the real router and route tree on mocks, with locale, page and
   feature flags as **controls**. Keep that set to app-wide concerns; page-specific interactions
   belong in that page's own stories. Two constraints if you extend it: Storybook updates a story
@@ -332,7 +354,7 @@ is behind an inline `import.meta.env.DEV`, which is what lets the production bui
 ## Error pages and data boundaries
 
 Every error the app can surface has its own component under
-`views/components/ErrorState/errors/` (`Error401`, `Error429`, `ErrorOffline`, …). They are pure
+`views/containers/ErrorState/errors/` (`Error401`, `Error429`, `ErrorOffline`, …). They are pure
 presentation and all defer to `ErrorLayout` for the chrome, so a status can grow its own copy or
 actions without touching the others.
 
@@ -538,8 +560,8 @@ Never add env variables in only one place — schema, type declaration, and exam
 2. Export it from `packages/shared/src/index.ts`
 3. Attach the handler in `apps/api/src/routes/<domain>/index.ts`
 4. Call it on the frontend with `createApiCall(route)` from `apps/fe/src/common/libs/api`
-5. Add an MSW handler in `apps/fe/src/mocks/handlers/<domain>.ts`, and register it in
-   `src/mocks/browser.ts` and `.storybook/preview.tsx` if every page needs it
+5. Add an MSW handler in `apps/fe/.storybook/mocks/handlers/<domain>.ts`, and add it to
+   `allHandlers` in `mocks/handlers/index.ts` if every page needs it
 
 **Report an expected failure as data, not as a rejection.** Use `createSafeApiCall`, which resolves
 to `ApiResult<T>` — `{ ok: true, data }` or `{ ok: false, status, payload }`. `status` is `null`

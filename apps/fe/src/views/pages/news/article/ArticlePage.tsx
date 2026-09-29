@@ -4,8 +4,9 @@ import { Show } from 'solid-js';
 import { Title } from '@solidjs/meta';
 import { A, createAsync, useParams } from '@solidjs/router';
 
-import { format, useI18n } from '../../../../common/libs/i18n';
-import { DataBoundary } from '../../../components/DataBoundary/DataBoundary';
+import { format, useI18n } from '@/common/libs/i18n';
+import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
+
 import { getArticle } from '../api';
 
 const ArticlePage: Component = () => {

@@ -1,7 +1,8 @@
 import type { RouteSchema, SharedApiRoute } from '@repo/shared';
 import { type Static, type TSchema } from '@sinclair/typebox';
 
-import { apiBaseUrl } from '../../constants/environment';
+import { apiBaseUrl } from '@/common/constants/environment';
+
 import { logger } from '../logger';
 
 export class ApiError extends Error {

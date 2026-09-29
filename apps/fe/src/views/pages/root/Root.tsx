@@ -1,8 +1,8 @@
 import type { Component } from 'solid-js';
 import { Show } from 'solid-js';
 
-import { format, useI18n } from '../../../common/libs/i18n';
-import { useRootStore } from '../../../common/libs/stores/root';
+import { format, useI18n } from '@/common/libs/i18n';
+import { useRootStore } from '@/common/libs/stores/root';
 
 const Root: Component = () => {
   const { state } = useRootStore();

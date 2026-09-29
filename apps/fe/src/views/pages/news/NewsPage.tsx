@@ -4,8 +4,9 @@ import { For } from 'solid-js';
 import { createAsync } from '@solidjs/router';
 import { A } from '@solidjs/router';
 
-import { format, useI18n } from '../../../common/libs/i18n';
-import { DataBoundary } from '../../components/DataBoundary/DataBoundary';
+import { format, useI18n } from '@/common/libs/i18n';
+import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
+
 import { getTopStories } from './api';
 import * as styles from './styles.css';
 

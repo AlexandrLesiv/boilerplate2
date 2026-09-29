@@ -1,9 +1,10 @@
 import type { Component, JSX } from 'solid-js';
 import { ErrorBoundary, Match, Suspense, Switch } from 'solid-js';
 
-import type { ApiResult } from '../../../common/libs/api';
-import { useI18n } from '../../../common/libs/i18n';
-import type { RenderProp } from '../../../common/types';
+import type { ApiResult } from '@/common/libs/api';
+import { useI18n } from '@/common/libs/i18n';
+import type { RenderProp } from '@/common/types';
+
 import { ErrorState } from '../ErrorState/ErrorState';
 import { errorKindOf, kindForStatus } from '../ErrorState/kinds';
 

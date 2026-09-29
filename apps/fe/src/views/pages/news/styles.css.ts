@@ -1,6 +1,6 @@
 import { style } from '@vanilla-extract/css';
 
-import { themeVars } from '../../../assets/styles/themes.css';
+import { themeVars } from '@/assets/styles/themes.css';
 
 export const list = style({
   listStyle: 'none',

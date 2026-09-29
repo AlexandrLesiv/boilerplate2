@@ -3,8 +3,9 @@ import { For } from 'solid-js';
 
 import { A, useLocation, useParams } from '@solidjs/router';
 
-import { useI18n, SUPPORTED_LOCALES, localePath, stripLocale } from '../../../common/libs/i18n';
-import type { Locale } from '../../../common/libs/i18n';
+import { useI18n, SUPPORTED_LOCALES, localePath, stripLocale } from '@/common/libs/i18n';
+import type { Locale } from '@/common/libs/i18n';
+
 import * as styles from './styles.css';
 
 export const LocaleSwitcher: Component = () => {

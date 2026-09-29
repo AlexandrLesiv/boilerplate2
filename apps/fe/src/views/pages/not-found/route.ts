@@ -1,5 +1,5 @@
-import { defineRoute } from '../../../common/libs/router';
-import { NotFound } from '../../components/NotFound/NotFound';
+import { defineRoute } from '@/common/libs/router';
+import { NotFound } from '@/views/containers/NotFound/NotFound';
 
 /**
  * Catch-all. Must stay last in `appRoutes`, and `noindex` because every unmatched URL lands here —

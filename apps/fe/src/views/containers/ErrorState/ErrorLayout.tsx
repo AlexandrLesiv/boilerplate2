@@ -3,7 +3,8 @@ import { Show } from 'solid-js';
 
 import { A, useParams } from '@solidjs/router';
 
-import { localeFromParams, localePath, useI18n } from '../../../common/libs/i18n';
+import { localeFromParams, localePath, useI18n } from '@/common/libs/i18n';
+
 import * as styles from './styles.css';
 import { SupportPrompt } from './SupportPrompt';
 

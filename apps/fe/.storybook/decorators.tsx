@@ -6,17 +6,18 @@ import { MemoryRouter, Route, createMemoryHistory, query } from '@solidjs/router
 
 import type { ClientConfig } from '@repo/shared';
 
-import { AppProvider } from '../src/AppProvider';
-import { generalTheme } from '../src/assets/styles/themes.css';
-import { ConfigContext, createConfigStore } from '../src/common/libs/config';
-import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../src/common/libs/i18n';
-import type { Locale } from '../src/common/libs/i18n';
-import { LoggerContext, createLogger } from '../src/common/libs/logger';
-import { DedupedMetaProvider } from '../src/common/libs/seo/DedupedMetaProvider';
-import { RootStoreContext, createRootStore } from '../src/common/libs/stores/root';
-import { setClientConfigOverrides } from '../src/mocks/handlers/config';
-import RootLayout from '../src/views/layouts/RootLayout';
-import { appRoutes } from '../src/views/routes';
+import { AppProvider } from '@/AppProvider';
+import { generalTheme } from '@/assets/styles/themes.css';
+import { ConfigContext, createConfigStore } from '@/common/libs/config';
+import { I18nContext, createI18nStore, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/common/libs/i18n';
+import type { Locale } from '@/common/libs/i18n';
+import { LoggerContext, createLogger } from '@/common/libs/logger';
+import { DedupedMetaProvider } from '@/common/libs/seo/DedupedMetaProvider';
+import { RootStoreContext, createRootStore } from '@/common/libs/stores/root';
+import RootLayout from '@/views/layouts/RootLayout';
+import { appRoutes } from '@/views/routes';
+
+import { setClientConfigOverrides } from './mocks/handlers/config';
 
 type ProviderOptions = {
   user?: { id: string; email: string } | null;
@@ -77,7 +78,7 @@ const WithI18n = (props: ParentProps & { locale?: () => Locale }) => {
 };
 
 // Same constraint as WithI18n. withPageLayout gets this from RootLayout instead. Stories set
-// flag values via the MSW handler in `src/mocks/handlers/config.ts`.
+// flag values via the MSW handler in `.storybook/mocks/handlers/config.ts`.
 const WithConfig = (props: ParentProps) => {
   const config = createConfigStore();
   return <ConfigContext.Provider value={config}>{props.children}</ConfigContext.Provider>;

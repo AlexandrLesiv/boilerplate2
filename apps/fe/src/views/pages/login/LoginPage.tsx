@@ -5,11 +5,12 @@ import { useNavigate } from '@solidjs/router';
 
 import { loginRoute } from '@repo/shared';
 
-import { createMutation } from '../../../common/libs/api';
-import { useI18n } from '../../../common/libs/i18n';
-import { useLogger } from '../../../common/libs/logger';
-import { useRootStore } from '../../../common/libs/stores/root';
-import { AppButton } from '../../components/Button/AppButton';
+import { createMutation } from '@/common/libs/api';
+import { useI18n } from '@/common/libs/i18n';
+import { useLogger } from '@/common/libs/logger';
+import { useRootStore } from '@/common/libs/stores/root';
+import { AppButton } from '@/views/components/Button/AppButton';
+
 import * as styles from './styles.css';
 
 const LoginPage: Component = () => {

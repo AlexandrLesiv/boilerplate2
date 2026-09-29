@@ -3,9 +3,9 @@ import { Show } from 'solid-js';
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
 
 import { FullApp } from '../.storybook/decorators';
+import { hackernewsStories } from '../.storybook/mocks/handlers/hackernews';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, localePath } from './common/libs/i18n';
 import type { Locale } from './common/libs/i18n';
-import { hackernewsStories } from './mocks/handlers/hackernews';
 
 type AppArgs = {
   locale: Locale;

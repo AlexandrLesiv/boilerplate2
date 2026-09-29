@@ -16,7 +16,11 @@ You write Storybook stories for this SolidJS monorepo. The frontend app lives at
 
 **Story file location**:
 - Pages: `apps/fe/src/views/pages/<name>/<Name>.stories.tsx`
-- Components: `apps/fe/src/views/components/<name>/<Name>.stories.tsx`
+- Components: `apps/fe/src/views/components/<name>/<Name>.stories.tsx` for design-system-style
+  primitives, `apps/fe/src/views/containers/<name>/<Name>.stories.tsx` for behavior/orchestration
+  components — a sibling of `components/`, `layouts/`, `pages/` (see `CLAUDE.md`'s "Apps and
+  packages" section for the split). Match the Storybook `title` to it too: `Components/<Name>` or
+  `Containers/<Name>`.
 
 **Decorators** (import from `../../../../.storybook/decorators`, adjusting relative depth):
 - `withPageLayout()` — for full page stories (adds header/nav/locale switcher)
@@ -30,7 +34,7 @@ parameters: {
 }
 ```
 - Import shared route URLs from `@repo/shared` (e.g. `topStoriesRoute.url`)
-- Shared handlers live in `apps/fe/src/mocks/handlers/` — reuse them when you want the default happy-path data
+- Shared handlers live in `apps/fe/.storybook/mocks/handlers/` — reuse them when you want the default happy-path data
 - `HttpResponse.error()` simulates a dropped connection (fetch rejects)
 - An empty `handlers: []` lets the request pass through to the real API
 
@@ -76,7 +80,7 @@ The API envelope from `@repo/shared`:
 1. The component file — understand what it fetches, what props it takes, what error/loading states it has
 2. Any existing `.stories.tsx` for the component — extend, don't replace, unless asked
 3. `apps/fe/.storybook/decorators.tsx` — to pick the right decorator
-4. `apps/fe/src/mocks/handlers/` — to reuse shared handler factories
+4. `apps/fe/.storybook/mocks/handlers/` — to reuse shared handler factories
 5. Relevant shared route from `packages/shared/src/routes/` — for URL and response shape
 
 ## Required story set for form/input components
@@ -100,15 +104,15 @@ Add these when relevant:
 - `WhitespaceOnly` — spaces only in required fields — browser validation or app-level guard
 - `UnicodeEmail` — IDN domain (e.g. `user@münchen.de`) — browser `type="email"` validation
 
-### Auth handler conventions (see `apps/fe/src/mocks/handlers/auth.ts`)
+### Auth handler conventions (see `apps/fe/.storybook/mocks/handlers/auth.ts`)
 
 Named handler exports for common states avoid inline repetition:
 ```ts
-import { loginSuccess, loginUnauthorized, loginServerError, loginNetworkError, loginSlow } from '../../../mocks/handlers/auth';
+import { loginSuccess, loginUnauthorized, loginServerError, loginNetworkError, loginSlow } from '../../../../.storybook/mocks/handlers/auth';
 parameters: { msw: { handlers: [loginUnauthorized] } }
 ```
 
-Create a `src/mocks/handlers/<domain>.ts` file whenever a new form or API endpoint needs shared handler variants. Export one handler per state, plus a default `<domain>Handlers` array for the happy path.
+Create a `.storybook/mocks/handlers/<domain>.ts` file whenever a new form or API endpoint needs shared handler variants. Export one handler per state, plus a default `<domain>Handlers` array for the happy path.
 
 ### Checking for render churn
 

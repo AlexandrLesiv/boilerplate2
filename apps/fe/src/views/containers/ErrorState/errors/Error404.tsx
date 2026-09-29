@@ -1,6 +1,7 @@
 import type { Component } from 'solid-js';
 
-import { useI18n } from '../../../../common/libs/i18n';
+import { useI18n } from '@/common/libs/i18n';
+
 import { ErrorLayout } from '../ErrorLayout';
 import type { ErrorPageProps } from './types';
 

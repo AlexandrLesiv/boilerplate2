@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
 
+import { AppButton } from '@/views/components/Button/AppButton';
+
 import { withAppProviders } from '../../../../.storybook/decorators';
-import { AppButton } from '../Button/AppButton';
 import { ErrorState } from './ErrorState';
 import { ERROR_KINDS } from './kinds';
 
@@ -10,7 +11,7 @@ import { ERROR_KINDS } from './kinds';
  * `keepStatus` is on throughout so the stories do not rewrite Storybook's own response status.
  */
 const meta: Meta<typeof ErrorState> = {
-  title: 'Components/ErrorState',
+  title: 'Containers/ErrorState',
   component: ErrorState,
   decorators: [withAppProviders()],
   argTypes: {

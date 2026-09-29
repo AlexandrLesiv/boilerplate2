@@ -1,7 +1,7 @@
 import { composeStyles, style, styleVariants } from '@vanilla-extract/css';
 
-import { styleContainer } from '../../../assets/styles/mixins.css';
-import { themeVars } from '../../../assets/styles/themes.css';
+import { styleContainer } from '@/assets/styles/mixins.css';
+import { themeVars } from '@/assets/styles/themes.css';
 
 export const buttonBase = composeStyles(
   styleContainer({

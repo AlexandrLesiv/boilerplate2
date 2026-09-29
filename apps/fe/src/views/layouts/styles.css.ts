@@ -1,7 +1,7 @@
 import { style } from '@vanilla-extract/css';
 
-import * as safeArea from '../../assets/styles/safe-area.css';
-import { themeVars } from '../../assets/styles/themes.css';
+import * as safeArea from '@/assets/styles/safe-area.css';
+import { themeVars } from '@/assets/styles/themes.css';
 
 export const header = style({
   display: 'flex',

@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
 
+import type { ApiResult } from '@/common/libs/api';
+
 import { withAppProviders } from '../../../../.storybook/decorators';
-import type { ApiResult } from '../../../common/libs/api';
 import { DataBoundary } from './DataBoundary';
 
 type Payload = { title: string };
 
 const meta: Meta = {
-  title: 'Components/DataBoundary',
+  title: 'Containers/DataBoundary',
   decorators: [withAppProviders()],
 };
 

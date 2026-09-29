@@ -1,5 +1,5 @@
-import { ApiError } from '../../../common/libs/fetch';
-import type { Translations } from '../../../common/libs/i18n';
+import { ApiError } from '@/common/libs/fetch';
+import type { Translations } from '@/common/libs/i18n';
 
 type ErrorCopy = Translations['pages']['errors'];
 

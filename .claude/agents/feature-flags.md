@@ -35,7 +35,7 @@ apps/api/
 apps/fe/
   vite-plugins/define-client-configuration.ts  validates + bakes __CLIENT_CONFIG_DEFAULTS__
   src/common/libs/config/index.ts         store, useConfig, useFeature, mergeClientConfig
-  src/mocks/handlers/config.ts            MSW handlers, incl. error and slow variants
+  .storybook/mocks/handlers/config.ts     MSW handlers, incl. error and slow variants
 ```
 
 **Four layers, lowest precedence first:**
@@ -140,13 +140,13 @@ Read the client ones in dev with `window.__logger.read()`.
 Drive flag values through the MSW handler, never a decorator option:
 
 ```ts
-import { clientConfig, clientConfigNetworkError } from '../../../mocks/handlers/config';
+import { clientConfig, clientConfigNetworkError } from '../../../../.storybook/mocks/handlers/config';
 
 parameters: { msw: { handlers: [clientConfig({ localeSwitcher: false })] } }
 ```
 
-`configHandlers` (the happy path) is registered globally in `.storybook/preview.tsx` and
-`src/mocks/browser.ts`, so a story only needs a handler when it wants non-default flags.
+`configHandlers` (the happy path) is registered globally in `.storybook/preview.tsx`, so a story
+only needs a handler when it wants non-default flags.
 `clientConfigServerError`, `clientConfigNetworkError` and `clientConfigSlow` cover the
 degradation paths — a gated component should have a story proving it falls back to the baked
 default, not to a blank screen.

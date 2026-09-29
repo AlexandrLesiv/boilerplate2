@@ -3,8 +3,9 @@ import { createSignal, Show, splitProps } from 'solid-js';
 
 import { Link } from '@solidjs/meta';
 
-import { format, useI18n } from '../../../common/libs/i18n';
-import { useLogger } from '../../../common/libs/logger';
+import { format, useI18n } from '@/common/libs/i18n';
+import { useLogger } from '@/common/libs/logger';
+
 import * as styles from './styles.css';
 
 export interface ImageProps extends Omit<

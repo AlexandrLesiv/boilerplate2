@@ -3,9 +3,10 @@ import { query } from '@solidjs/router';
 import { mswLoader } from 'msw-storybook-addon/csf3';
 import type { Preview } from 'storybook-solidjs-vite';
 
-import '../src/assets/styles/global.css.ts';
-import { allHandlers } from '../src/mocks/handlers';
-import { setClientConfigOverrides } from '../src/mocks/handlers/config';
+import '@/assets/styles/global.css.ts';
+
+import { allHandlers } from './mocks/handlers';
+import { setClientConfigOverrides } from './mocks/handlers/config';
 import { installRenderStats, setRenderStatsOverlay } from './render-stats';
 
 const BREAKPOINTS = {

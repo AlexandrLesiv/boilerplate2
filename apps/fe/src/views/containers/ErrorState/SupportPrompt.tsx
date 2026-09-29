@@ -1,8 +1,9 @@
 import type { Component } from 'solid-js';
 
-import { useI18n } from '../../../common/libs/i18n';
-import { useLogger } from '../../../common/libs/logger';
-import { AppButton } from '../Button/AppButton';
+import { useI18n } from '@/common/libs/i18n';
+import { useLogger } from '@/common/libs/logger';
+import { AppButton } from '@/views/components/Button/AppButton';
+
 import * as styles from './styles.css';
 
 /**

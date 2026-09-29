@@ -7,7 +7,7 @@ import {
   loginSlow,
   loginSuccess,
   loginUnauthorized,
-} from '../../../mocks/handlers/auth';
+} from '../../../../.storybook/mocks/handlers/auth';
 import LoginPage from './LoginPage';
 
 const meta: Meta<typeof LoginPage> = {

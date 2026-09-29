@@ -1,4 +1,5 @@
-import { defineJsonLd, defineRoute } from '../../../../common/libs/router';
+import { defineJsonLd, defineRoute } from '@/common/libs/router';
+
 import { getArticle } from '../api';
 import ArticlePage from './ArticlePage';
 

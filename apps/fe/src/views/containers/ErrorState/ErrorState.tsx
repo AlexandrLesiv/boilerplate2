@@ -2,7 +2,8 @@ import type { Component } from 'solid-js';
 import { untrack } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 
-import { markResponseStatus } from '../../../common/libs/http/response-status';
+import { markResponseStatus } from '@/common/libs/http/response-status';
+
 import { ERROR_PAGES, type ErrorPageProps } from './errors';
 import { statusForKind, type ErrorKind } from './kinds';
 

@@ -4,7 +4,7 @@ import { For, Show, Suspense, createEffect } from 'solid-js';
 import { Link, Meta, Title } from '@solidjs/meta';
 import { A, useCurrentMatches, useLocation, useParams } from '@solidjs/router';
 
-import { ConfigContext, createConfigStore } from '../../common/libs/config';
+import { ConfigContext, createConfigStore } from '@/common/libs/config';
 import {
   I18nContext,
   createI18nStore,
@@ -12,10 +12,11 @@ import {
   localeFromParams,
   localePath,
   stripLocale,
-} from '../../common/libs/i18n';
-import type { Locale } from '../../common/libs/i18n';
-import type { AppRouteInfo } from '../../common/libs/router';
-import { JsonLd } from '../../common/libs/seo/JsonLd';
+} from '@/common/libs/i18n';
+import type { Locale } from '@/common/libs/i18n';
+import type { AppRouteInfo } from '@/common/libs/router';
+import { JsonLd } from '@/common/libs/seo/JsonLd';
+
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
 import * as styles from './styles.css';
 

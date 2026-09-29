@@ -1,6 +1,6 @@
 import { style } from '@vanilla-extract/css';
 
-import { themeVars } from '../../../assets/styles/themes.css';
+import { themeVars } from '@/assets/styles/themes.css';
 
 export const container = style({
   // An inline-size container, so everything below scales to whatever this is dropped into
