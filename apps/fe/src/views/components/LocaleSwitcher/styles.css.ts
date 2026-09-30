@@ -9,7 +9,11 @@ export const container = style({
 });
 
 export const localeLink = style({
-  padding: '0.2rem 0.5rem',
+  boxSizing: 'border-box',
+  display: 'inline-block',
+  width: '2.25rem',
+  textAlign: 'center',
+  padding: '0.5rem 0',
   borderRadius: '0.25rem',
   fontSize: '0.8rem',
   textDecoration: 'none',

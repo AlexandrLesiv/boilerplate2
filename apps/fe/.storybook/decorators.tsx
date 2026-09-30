@@ -60,7 +60,7 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
   const initialUser = untrack(() => props.user);
   if (initialUser) store.setUser(initialUser);
   const logger = createLogger();
-  const connectivity = createConnectivityStore();
+  const connectivity = createConnectivityStore(logger);
 
   return (
     <MetaProvider>

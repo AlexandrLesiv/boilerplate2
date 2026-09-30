@@ -69,11 +69,9 @@ export const dialog = style({
     },
     [mobileBreakpoint]: {
       margin: 0,
-      // `width`/`height: auto` + `maxWidth`/`maxHeight: none` cancel UA defaults on `dialog:modal`
-      // that otherwise block `inset: 0`'s stretch — see Dialog/AGENTS.md for the two specific
-      // defaults and how they were found (`getComputedStyle`, not guessed).
       inset: 0,
-      width: 'auto',
+      width: '100%',
+      right: 'auto',
       height: 'auto',
       maxWidth: 'none',
       maxHeight: 'none',

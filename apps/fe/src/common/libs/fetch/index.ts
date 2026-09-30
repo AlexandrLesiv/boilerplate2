@@ -3,7 +3,8 @@ import { type Static, type TSchema } from '@sinclair/typebox';
 
 import { apiBaseUrl } from '@/common/constants/environment';
 
-import { logger } from '../logger';
+import type { Logger } from '../logger';
+import { useLogger } from '../logger';
 
 export class ApiError extends Error {
   constructor(
@@ -78,7 +79,8 @@ const reportSchemaDivergence = async <S extends RouteSchema>(
   route: SharedApiRoute<S>,
   status: number,
   payload: unknown,
-  url: string
+  url: string,
+  logger: Logger
 ): Promise<void> => {
   const schema = route.schema.response?.[status];
   if (!schema) return;
@@ -95,6 +97,11 @@ export const apiFetch = async <S extends RouteSchema>(
   locale?: string,
   options?: CallOptions<S>
 ): Promise<RouteResponse<S>> => {
+  // Captured synchronously, before any `await` below — by the time this function resumes after
+  // one, Solid's reactive owner from whatever call site invoked it (a query fetcher re-run, a
+  // mutation's event handler) is gone, and the hook would have nothing to find.
+  const logger = useLogger();
+
   const url = buildRouteUrl(
     route.url,
     options?.params as Record<string, unknown> | undefined,
@@ -123,6 +130,6 @@ export const apiFetch = async <S extends RouteSchema>(
   const payload = (await response.json()) as RouteResponse<S>;
   // Not awaited: loading TypeBox is slow enough on first use to delay the render if it sits on
   // the response path, and a diagnostic must not change how fast the app gets its data.
-  if (import.meta.env.DEV) void reportSchemaDivergence(route, response.status, payload, url);
+  if (import.meta.env.DEV) void reportSchemaDivergence(route, response.status, payload, url, logger);
   return payload;
 };

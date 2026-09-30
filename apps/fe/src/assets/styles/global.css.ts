@@ -4,17 +4,20 @@ import { assignVars, globalStyle } from '@vanilla-extract/css';
 
 import { baseColorTheme } from './color/base';
 import { nightColorTheme } from './color/night';
-import { themeVars } from './themes.css';
-import { normalFontSize } from './typography/fluid';
+import { belowBreakpoint } from './responsive/breakpoints';
+import { FONT_SIZE_NARROW, FONT_SIZE_NORMAL, themeVars } from './themes.css';
 
 globalStyle(':root', {
   vars: {
     ...assignVars(themeVars.color, baseColorTheme),
-    ...assignVars(themeVars.typography, { fontSizeNormal: normalFontSize }),
+    ...assignVars(themeVars.typography, { fontSizeNormal: FONT_SIZE_NORMAL }),
   },
   '@media': {
     '(prefers-color-scheme: dark)': {
       vars: assignVars(themeVars.color, nightColorTheme),
+    },
+    [belowBreakpoint('sm')]: {
+      vars: assignVars(themeVars.typography, { fontSizeNormal: FONT_SIZE_NARROW }),
     },
   },
 });

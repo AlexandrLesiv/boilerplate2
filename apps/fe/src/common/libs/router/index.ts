@@ -10,6 +10,7 @@ export type RouteMeta = {
   title: string;
   description?: string;
   robots?: string;
+  /** A path (e.g. `/news/123`), not a full URL — `RootLayout` passes it through `absoluteUrl`. */
   canonical?: string;
   schema?: JsonLdSchema | JsonLdSchema[];
 };

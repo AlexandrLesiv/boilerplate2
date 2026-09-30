@@ -104,9 +104,7 @@ const clientLogger: Logger = {
   navigation: (to) => push('info', 'navigation', 'navigate', { to }),
 };
 
-// ─── export function (client only) ──────────────────────────────────────────
-
-export const exportLogs = async (opts?: { limit?: number; since?: number }): Promise<void> => {
+const exportLogs = async (opts?: { limit?: number; since?: number }): Promise<void> => {
   await flush();
   const entries = await dbRead(opts);
   const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
@@ -118,10 +116,6 @@ export const exportLogs = async (opts?: { limit?: number; since?: number }): Pro
   a.click();
   URL.revokeObjectURL(url);
 };
-
-// ─── module-level singleton (for use outside components) ────────────────────
-
-export const logger: Logger = import.meta.env.SSR ? serverLogger : clientLogger;
 
 // ─── constructor — called from AppProvider ───────────────────────────────────
 

@@ -27,7 +27,7 @@ export const LoginDialog: Component = () => {
       when={state.user}
       fallback={
         <>
-          <AppButton variant="ghost" onClick={() => setOpen(true)}>
+          <AppButton variant="ghost" class={styles.authTrigger} onClick={() => setOpen(true)}>
             {t().nav.login}
           </AppButton>
           <Dialog open={open()} onClose={() => setOpen(false)} title={t().pages.login.title}>
@@ -41,6 +41,7 @@ export const LoginDialog: Component = () => {
           <span>{user().email}</span>
           <AppButton
             variant="ghost"
+            class={styles.authTrigger}
             onClick={() => {
               logger.event('logout.submit');
               logout();

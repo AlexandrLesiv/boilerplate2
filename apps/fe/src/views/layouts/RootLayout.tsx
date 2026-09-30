@@ -4,11 +4,13 @@ import { For, Show, Suspense, createEffect } from 'solid-js';
 import { Link, Meta, Title } from '@solidjs/meta';
 import { A, useCurrentMatches, useLocation, useParams } from '@solidjs/router';
 
+import { absoluteUrl } from '@/common/constants/environment';
 import { ConfigContext, createConfigStore } from '@/common/libs/config';
 import {
+  LOCALES,
   I18nContext,
+  bcp47Alias,
   createI18nStore,
-  SUPPORTED_LOCALES,
   localeFromParams,
   localePath,
   stripLocale,
@@ -29,7 +31,7 @@ const RootLayout: Component<ParentProps> = (props) => {
   const matches = useCurrentMatches();
   const locale = () => localeFromParams(params);
   createEffect(() => {
-    document.documentElement.lang = locale();
+    document.documentElement.lang = bcp47Alias(locale());
   });
   const i18n = createI18nStore(locale);
   // Not in AppProvider: createAsync needs router context and AppProvider sits above the router.
@@ -60,10 +62,10 @@ const RootLayout: Component<ParentProps> = (props) => {
         <Link rel="apple-touch-icon" href="/assets/favicon/apple-touch-icon.png" />
         <Meta name="msapplication-config" content="/assets/favicon/browserconfig.xml" />
         <Meta name="theme-color" content="#3b82f6" />
-        <For each={SUPPORTED_LOCALES}>
-          {(target) => <Link rel="alternate" hreflang={target} href={alternateHref(target)} />}
+        <For each={LOCALES}>
+          {(entry) => <Link rel="alternate" hreflang={entry.alias} href={absoluteUrl(alternateHref(entry.lang))} />}
         </For>
-        <Link rel="alternate" hreflang="x-default" href={pagePath()} />
+        <Link rel="alternate" hreflang="x-default" href={absoluteUrl(pagePath())} />
 
         <Suspense>
           <Show when={routeMeta()?.title}>
@@ -75,7 +77,7 @@ const RootLayout: Component<ParentProps> = (props) => {
           <Show when={routeMeta()?.robots}>
             <Meta name="robots" content={routeMeta()!.robots!} />
           </Show>
-          <Link rel="canonical" href={routeMeta()?.canonical ?? pagePath()} />
+          <Link rel="canonical" href={absoluteUrl(routeMeta()?.canonical ?? pagePath())} />
           <Show when={routeMeta()?.schema}>{(schema) => <JsonLd schema={schema()} />}</Show>
         </Suspense>
 
@@ -88,10 +90,12 @@ const RootLayout: Component<ParentProps> = (props) => {
               <div class={styles.headerLeft}>
                 <strong>SolidJS App</strong>
                 <nav class={styles.nav}>
-                  <A href={pfx() || '/'} end>
+                  <A href={pfx() || '/'} end class={styles.navLink}>
                     {i18n.t().nav.home}
                   </A>
-                  <A href={`${pfx()}/news`}>{i18n.t().nav.news}</A>
+                  <A href={`${pfx()}/news`} class={styles.navLink}>
+                    {i18n.t().nav.news}
+                  </A>
                 </nav>
               </div>
               <div class={styles.headerRight}>

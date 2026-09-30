@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
-import { expect } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 
 import { withAppProviders } from '../../../../.storybook/decorators';
+import { layoutShiftStats, resetLayoutShiftStats } from '../../../../.storybook/layout-shift-stats';
 import { TimedLoader } from './TimedLoader';
 
 const meta: Meta<typeof TimedLoader> = {
@@ -45,5 +46,26 @@ export const EscalatesWhenSlow: Story = {
   play: async ({ canvas }) => {
     await canvas.findByText(/longer than usual/i);
     await expect(canvas.queryByText(/loading/i)).not.toBeNull();
+  },
+};
+
+/** `TimedReveal` reserves no space for its own content — nothing sits in the DOM before the
+ * spinner and copy mount, so their arrival pushes whatever comes after them down. Demonstrates
+ * `layout-shift-stats.ts` against a real, already-existing gap in this app rather than a
+ * synthetic one; not a claim that this is fine, see the caller for whether it matters there. */
+export const CausesLayoutShiftWhenRevealed: Story = {
+  args: { delayMs: 20, slowMs: 5000 },
+  render: (props) => (
+    <>
+      <TimedLoader delayMs={props.delayMs} slowMs={props.slowMs} />
+      <p>Content below the loader, with nothing reserving space for it.</p>
+    </>
+  ),
+  play: async ({ canvas }) => {
+    resetLayoutShiftStats();
+    await canvas.findByText(/loading/i);
+    // The browser delivers layout-shift entries to the PerformanceObserver callback
+    // asynchronously — reading the count synchronously right after the DOM update races it.
+    await waitFor(() => expect(layoutShiftStats().shiftCount).toBeGreaterThan(0));
   },
 };

@@ -264,6 +264,9 @@ importers:
       solid-js:
         specifier: 1.9.15
         version: 1.9.15
+      web-vitals:
+        specifier: 6.2.2
+        version: 6.2.2
     devDependencies:
       '@chromatic-com/storybook':
         specifier: 5.3.1
@@ -4272,6 +4275,9 @@ packages:
   vscode-uri@3.2.0:
     resolution: {integrity: sha512-m2gXo3bn0G1kT9InzMf07fTbqMbGtyckj3bH5ktLO+1Ssv+yiATZ4dhwaQv9UZWxJh6E9IFGnQyjgWVDWVBDrg==}
 
+  web-vitals@6.2.2:
+    resolution: {integrity: sha512-oto5x6dLEgrRqfcWed+pZEUb2q6ikbFmqF54CRDhI/QGbn+qxC49b4C4OkbH+kb9C3a8shpFD3SgR9kRcs80ZQ==}
+
   webpack-virtual-modules@0.6.2:
     resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
 
@@ -8047,6 +8053,8 @@ snapshots:
       - yaml
 
   vscode-uri@3.2.0: {}
+
+  web-vitals@6.2.2: {}
 
   webpack-virtual-modules@0.6.2: {}
 

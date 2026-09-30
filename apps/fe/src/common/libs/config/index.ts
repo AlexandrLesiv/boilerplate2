@@ -5,7 +5,8 @@ import { createAsync } from '@solidjs/router';
 import { clientConfigRoute, type ClientConfig, type FeatureFlag } from '@repo/shared';
 
 import { createApiCall } from '../api';
-import { logger } from '../logger';
+import type { Logger } from '../logger';
+import { useLogger } from '../logger';
 
 /** Baked in and validated by `vite-plugins/define-client-configuration.ts`. */
 export const CLIENT_CONFIG_DEFAULTS: ClientConfig = __CLIENT_CONFIG_DEFAULTS__;
@@ -17,7 +18,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 // Type-checks against the defaults because TypeBox is stripped from the client bundle, so the
 // real schema is unavailable here. Keeps a server ahead of or behind this build safe.
-const overlay = (defaults: unknown, incoming: unknown, path: string): unknown => {
+// `logger` is a parameter, not `useLogger()`: this runs inside the fetcher passed to
+// `createAsync` below, after an `await` — by then Solid's reactive owner from setup time is long
+// gone, so the hook has nothing to find. The caller captures it once, synchronously, at setup.
+const overlay = (defaults: unknown, incoming: unknown, path: string, logger: Logger): unknown => {
   if (!isRecord(defaults) || !isRecord(incoming)) return defaults;
 
   const result: Record<string, unknown> = { ...defaults };
@@ -27,7 +31,7 @@ const overlay = (defaults: unknown, incoming: unknown, path: string): unknown =>
     const keyPath = path ? `${path}.${key}` : key;
 
     if (isRecord(fallback)) {
-      result[key] = overlay(fallback, value, keyPath);
+      result[key] = overlay(fallback, value, keyPath, logger);
     } else if (typeof value === typeof fallback) {
       result[key] = value;
     } else {
@@ -41,17 +45,22 @@ const overlay = (defaults: unknown, incoming: unknown, path: string): unknown =>
   return result;
 };
 
-export const mergeClientConfig = (incoming: unknown): ClientConfig =>
-  overlay(CLIENT_CONFIG_DEFAULTS, incoming, '') as ClientConfig;
+export const mergeClientConfig = (incoming: unknown, logger: Logger): ClientConfig =>
+  overlay(CLIENT_CONFIG_DEFAULTS, incoming, '', logger) as ClientConfig;
 
 /** Fetched once per page load; under SSR the result is serialised into the HTML payload. */
 export const createConfigStore = () => {
+  // Captured synchronously here — `createConfigStore()` is called from a component body (e.g.
+  // `RootLayout`) that is a descendant of `LoggerContext.Provider`, so the hook resolves. The
+  // fetcher below runs after an `await`, where it no longer would.
+  const logger = useLogger();
+
   // initialValue makes the accessor non-optional, so there is always a complete config.
   const config = createAsync(
     async () => {
       try {
         const response = await getClientConfig();
-        return mergeClientConfig(response.data);
+        return mergeClientConfig(response.data, logger);
       } catch (error) {
         logger.warn('config.load.failed', {
           message: error instanceof Error ? error.message : 'unknown',

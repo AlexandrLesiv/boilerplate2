@@ -41,6 +41,15 @@ export const nav = style({
   gap: '1rem',
 });
 
+// No min-width: switching locale changes "Home"/"News"' own width, which shifts `headerRight`
+// since `header` is `justify-content: space-between` — accepted rather than fixed.
+// Vertical padding: measured 18.34px tall with none at all — WCAG 2.5.8 / axe-core's
+// `target-size` rule requires 24px. `0.4rem` top/bottom clears it with margin (verified live).
+export const navLink = style({
+  textAlign: 'center',
+  padding: '0.4rem 0',
+});
+
 // A single flex child alongside `headerLeft`, so `header`'s `space-between` pushes this whole
 // group to the right edge as one unit instead of spreading each of its children out evenly.
 export const headerRight = style({

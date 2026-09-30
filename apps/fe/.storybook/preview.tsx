@@ -5,6 +5,7 @@ import type { Preview } from 'storybook-solidjs-vite';
 
 import '@/assets/styles/global.css.ts';
 
+import { installLayoutShiftStats, setLayoutShiftStatsOverlay } from './layout-shift-stats';
 import { allHandlers } from './mocks/handlers';
 import { setClientConfigOverrides } from './mocks/handlers/config';
 import { installRenderStats, setRenderStatsOverlay } from './render-stats';
@@ -84,6 +85,19 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    layoutShift: {
+      description: 'Overlay scoring layout shifts (Layout Instability API) inside the story canvas',
+      defaultValue: 'off',
+      toolbar: {
+        title: 'Layout shift',
+        icon: 'move',
+        items: [
+          { value: 'off', title: 'Layout shift: off' },
+          { value: 'on', title: 'Layout shift: on' },
+        ],
+        dynamicTitle: true,
+      },
+    },
   },
   beforeEach: (context) => {
     query.clear();
@@ -96,6 +110,10 @@ const preview: Preview = {
     // Off unless switched on from the toolbar, so stories, snapshots and the a11y tree are
     // untouched by default.
     setRenderStatsOverlay(context.globals['renderStats'] === 'on', context.id);
+    // Scores layout shifts attributable to nodes inside this story's canvas — `layoutShiftStats()`
+    // in a play function, or `__layoutShiftStats.get()` in the browser console.
+    installLayoutShiftStats(context.canvasElement);
+    setLayoutShiftStatsOverlay(context.globals['layoutShift'] === 'on', context.id);
   },
   parameters: {
     msw: {
@@ -112,6 +130,15 @@ const preview: Preview = {
     },
     a11y: {
       test: 'todo',
+      // `target-size` (WCAG 2.5.8, "touch targets must be 24px or leave sufficient space") ships
+      // disabled by default in axe-core — verified against the installed package
+      // (`axe._audit.rules.find(r => r.id === 'target-size').enabled === false`). Without this,
+      // every existing `a11y: { test: 'error' }` story only ever checked the rules axe enables
+      // by default, so an undersized target could ship clean through that gate. Enabling it here
+      // makes it run for every story from now on, surfaced in the addon panel immediately; each
+      // component still needs its own violations fixed and its story promoted to
+      // `test: 'error'` before this actually blocks a regression, per the existing convention.
+      options: { rules: { 'target-size': { enabled: true } } },
     },
   },
 };

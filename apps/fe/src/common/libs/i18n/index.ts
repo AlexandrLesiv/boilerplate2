@@ -7,9 +7,31 @@ import en from './locales/en.json';
 export type Translations = typeof en;
 export { format } from './format';
 
-export const SUPPORTED_LOCALES = ['en', 'ua', 'ru'] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
+/**
+ * `lang` is this app's own locale code — the URL prefix (`/ua/news`), the translation filename,
+ * the `LocaleSwitcher` label. `alias` is the standards-correct BCP 47 language tag, needed only
+ * where a real language tag must be emitted (`hreflang`, `<html lang>`). They differ for
+ * Ukrainian: `ua` is the ISO 3166-1 *country* code (Ukraine), not a language code, and is
+ * rejected as an invalid/unexpected language tag by search engines and `<html lang>` consumers
+ * (e.g. screen readers) — `uk` is the real one. One record per locale rather than a second
+ * parallel map, since renaming `lang` itself everywhere is a much bigger, separate change.
+ */
+export const LOCALES = [
+  { lang: 'en', alias: 'en' },
+  { lang: 'ua', alias: 'uk' },
+  { lang: 'ru', alias: 'ru' },
+] as const;
+
+export type Locale = (typeof LOCALES)[number]['lang'];
+export const SUPPORTED_LOCALES: readonly Locale[] = LOCALES.map((entry) => entry.lang);
 export const DEFAULT_LOCALE: Locale = 'en';
+
+const BCP47_ALIAS: Record<Locale, string> = Object.fromEntries(
+  LOCALES.map((entry) => [entry.lang, entry.alias])
+) as Record<Locale, string>;
+
+/** The real language tag for `<html lang>` — see `LOCALES`' `alias` field. */
+export const bcp47Alias = (lang: Locale): string => BCP47_ALIAS[lang];
 
 const localeLoaders: Record<Locale, () => Promise<Translations>> = {
   en: async () => en,
