@@ -29,22 +29,16 @@ docs — see the session that built this for the exact probes:
   reflected DOM attribute — `getAttribute('aria-modal')` reads `null` even though the accessibility
   tree correctly reports the modal semantics; verify with an accessibility snapshot, not
   `getAttribute`).
-- **Body scroll lock: not real, and not handled by the browser.** A page behind an open modal
-  `<dialog>` still scrolls with a mouse wheel — `::backdrop` stops clicks, not scrolling.
-  `Dialog.tsx` locks it itself via `scrollLocked` (`assets/styles/scroll-lock.css.ts`), applied
-  with `classList`, not declaratively via `html:has(dialog[open])` — see "Custom scrollbar gutter"
-  below for why the timing has to be JS-driven, not attribute-driven.
-- **`scrollbar-gutter: stable` does not prevent that rule's own width jump.** Toggling `overflow`
-  still changes `<html>`'s `clientWidth` by the scrollbar's width even with `scrollbar-gutter:
-  stable` set on `html` — verified empirically in this repo's Chromium, several combinations tried,
-  including removing `body` from flow via `position: fixed` instead of `overflow: hidden`. The
-  property genuinely helps a *different* problem (content length changing between short and tall
-  pages while `overflow` itself never changes, which is why it's kept permanently in `global.css.ts`
-  regardless), but doesn't make an `overflow` toggle itself jump-free. The only technique that
-  reliably held `clientWidth` constant in testing was forcing `overflow-y: scroll` permanently
-  (always showing the scrollbar track, even on pages that don't need it) — not worth it: the jump
-  only happens on pages that had a scrollbar to lock in the first place, and on a short page there's
-  nothing to jump regardless of whether the rule fires.
+- **Body scroll lock: not real, and not handled by the browser on its own.** A page behind an open
+  modal `<dialog>` still scrolls with a mouse wheel — `::backdrop` stops clicks, not scrolling.
+  Locked declaratively via `:root:has(dialog[open]) { overflow: hidden }`
+  (`assets/styles/global.css.ts`) — no JS at all. See "Scrollbar gutter while open" below.
+- **`scrollbar-gutter: stable`, kept permanently applied (never toggled), does prevent the width
+  jump from toggling `overflow`.** An earlier note here claimed otherwise, based on toggling
+  `scrollbar-gutter` itself alongside `overflow` — that combination does jump. Verified live,
+  repeatedly, across several viewport widths and device pixel ratios: leaving `scrollbar-gutter:
+  stable` on `html` permanently and *only* toggling `overflow` keeps `clientWidth` exactly constant
+  through lock/unlock, on both a short page and a scrolling one. See "Scrollbar gutter while open."
 - **Centering: not real in this app.** The global `* { margin: 0 }` reset
   (`assets/styles/global.css.ts`) overrides the UA stylesheet's `dialog:modal { margin: auto }`
   default, so `styles.css.ts` restates `margin: auto` explicitly. Any other native-dialog-default
@@ -157,32 +151,31 @@ Making the mobile box actually fill the screen took more than `inset: 0`, found 
   above were correct, leaving a strip at the bottom where the page behind it (backdrop-darkened, so
   visibly a different shade) showed through. `max-height`/`max-width: none` cancel both UA defaults.
 
-### Content unmounting and the scroll-lock release both wait on `ref.getAnimations()`, not `transitionend`
+### Content unmounting waits on `ref.getAnimations()`, not `transitionend`
 
 Unmounting content the instant `open` goes false (as the "why `children` is a function" section
 above describes) created a second-order problem: the box keeps fading out for 150ms via its own CSS
 transition, but the content inside it — everything except the always-rendered close button — was
 vanishing instantly, before that fade even started. Verified live: genuinely visible, not
-theoretical, closer to "the form disappears, then an empty box lingers" than a clean close. Same
-deadline applies to releasing the scroll lock (`common/libs/scroll-lock`) — releasing it earlier
-would show the real, undarkened native scrollbar while `::backdrop` is still mid-fade.
+theoretical, closer to "the form disappears, then an empty box lingers" than a clean close. This is
+`mounted`'s only job now — the scroll lock is a separate, declarative `:has()` rule (see "Scrollbar
+gutter while open") with no timing to coordinate with this at all.
 
-Both wait on `Promise.allSettled(ref.getAnimations().map(a => a.finished))`, not on a
-`transitionend` listener. This went through two earlier versions before landing here, each ruled
-out by something verified live, not guessed:
+Waits on `Promise.allSettled(ref.getAnimations().map(a => a.finished))`, not on a `transitionend`
+listener. This went through two earlier versions before landing here, each ruled out by something
+verified live, not guessed:
 
 1. **`transitionend` alone.** Fires for a normal close, but `prefers-reduced-motion: reduce` sets
    this transition's duration to `0s` (styles.css.ts), and a `0s` transition fires no
-   `transitionend` at all — relying on it alone left content, and the scroll lock, stuck forever
-   for reduced-motion users.
+   `transitionend` at all — relying on it alone left content mounted forever for reduced-motion
+   users.
 2. **`transitionend` plus a `setTimeout` backstop.** Added because at least one real browser
    apparently never fires `transitionend` for this transition at all — the list includes
-   `overlay`/`display` transitions driven by `@starting-style`/`allow-discrete`, a newer mechanism,
-   and without a backstop that left the scroll lock applied forever after every close there. Worked,
-   but needed a magic slack constant (`transitionMs + 50`) on top of the CSS duration to give the
-   real event a fair chance to win the race, and needed manual bookkeeping (a timer variable,
-   clearing it from three different places) to stop a stale fallback from an abandoned close
-   outliving a reopen.
+   `overlay`/`display` transitions driven by `@starting-style`/`allow-discrete`, a newer mechanism.
+   Worked, but needed a magic slack constant (`transitionMs + 50`) on top of the CSS duration to
+   give the real event a fair chance to win the race, and needed manual bookkeeping (a timer
+   variable, clearing it from three different places) to stop a stale fallback from an abandoned
+   close outliving a reopen.
 
 `getAnimations()` replaces both: it's the browser's own record of what's actually still animating
 on the element, so there's no event to fail to fire and no duration to guess. Verified live
@@ -197,58 +190,43 @@ return` inside the `.then()` is the direct replacement for the old timer-cancell
 a stale settle from an abandoned close checks the *current* prop instead of racing to clear a
 timer, so a reopen before it resolves is never undone by it.
 
-## Scrollbar gutter while open — plain `padding-right`, no overlay element
+## Scrollbar gutter while open — one declarative rule, no JS at all
 
-`lockScroll`/`unlockScroll` (`common/libs/scroll-lock/index.ts`) replace `html`'s native
-`scrollbar-gutter: stable` reservation with a JS-measured `body.style.paddingRight` for as long as
-`scrollLocked` (`assets/styles/scroll-lock.css.ts`) is applied, rather than leaving the native
-reservation in place. Deliberately its own module, not inline in `Dialog.tsx`: measuring the
-gutter and toggling the class/padding has nothing dialog-specific about it — any other overlay
-that needs to lock background scroll can call the same two functions. What *stays* in `Dialog.tsx`
-is genuinely dialog-specific: *when* to call them, gated on this component's own open/close
-timing and its `getAnimations()`-based close detection (see above) — none of which a generic
-scroll-lock primitive should need to know about.
+Background scroll lock is a single global rule (`assets/styles/global.css.ts`):
 
-**Measured off `document.body.clientWidth`, not `document.documentElement.clientWidth`.** Found
-via a real regression, reported on a page too short to scroll: `documentElement.clientWidth` (the
-`<html>` element) is a CSSOM special case that always returns the *viewport* width, unaffected by
-`scrollbar-gutter: stable`'s own reservation on itself — so `innerWidth - documentElement.
-clientWidth` reads `0` on a non-scrolling page even though the reservation is real (verified live:
-the header's actual rendered width was 15px narrower than that, and grew by exactly 15px once
-`scrollLocked` switched the gutter to `auto`). `body`, a normal element, isn't special-cased and
-reports the reduced width correctly whether or not the page currently scrolls — confirmed on both
-a short page and a scrolling one, same reading (`15`) either way.
+```ts
+globalStyle(':root:has(dialog[open])', { overflow: 'hidden' });
+```
 
-An earlier version of this also Portal-rendered a JS-positioned `<div>` over that strip to paint
-`::backdrop`'s darkening onto it manually, worked around a real gap: `scrollbar-color` (the
-property that would otherwise theme a *native* reserved gutter) has no Safari support, and Safari
-doesn't respect a plain `background-color` painted into that specific reserved area the way Chrome
-does either.
+`html`'s `scrollbar-gutter: stable` stays applied permanently, whether or not a dialog is open, so
+locking/releasing `overflow` never changes the reserved width — nothing to measure, nothing to
+compensate. `Dialog.tsx` doesn't call anything to lock or release this; `:has()` reacts to the
+`open` attribute directly, so it also covers any other native `<dialog>` in the app for free, and
+there's no JS state to release in `onCleanup` either.
 
-That overlay div turned out to be actively wrong once `padding-right` replaced the native
-reservation, not just unnecessary — **found by screenshot, not by reading the code**: with the
-overlay's `display` toggled off in a live page, the strip it covered matched the rest of the
-backdrop-darkened page exactly; with it on, that strip was visibly darker. The reason: `::backdrop`
-is a full-viewport, top-layer pseudo-element — it already darkens *plain padding on `body`*
-uniformly in every browser, since there's nothing scrollbar-specific left for it to fail at once
-the native `scrollbar-gutter`/`scrollbar-color` mechanism is out of the picture entirely. The
-overlay was painting its own `rgba(0,0,0,0.5)` on top of a strip `::backdrop` was already covering,
-stacking two semi-transparent layers into one visibly darker seam at the edge. Deleted; do not
-reintroduce a coloring element for this unless the reservation mechanism goes back to being
-`scrollbar-gutter`-based (native or otherwise), at which point the Safari gap above is real again.
+This replaced two more elaborate approaches, in order:
 
-- **Width still measured before `scrollLocked` is applied, not after** — `scrollLocked` sets
-  `overflow: hidden`, which removes the native scrollbar; measuring afterward reads ~0 regardless
-  of whether the page actually had one, squishing the layout by the scrollbar's width instead of
-  compensating for it. This was a real regression, not a hypothetical: reads a scrollbar-having
-  page's width, opens a dialog, watches content visibly shift.
-- **`scrollLocked` releases once the close has visually finished, not on `open` going false.**
-  Still true without the overlay: `:has(dialog[open])` (or releasing immediately in JS) stops
-  matching the instant the attribute is removed, before the closing fade even starts, and
-  releasing `overflow` right then would bring back the real, undarkened native scrollbar while
-  `::backdrop` is still mid-fade for another 150ms — a page that's still visibly
-  darkening/undarkening next to a scrollbar that already looks normal. See the `getAnimations()`
-  section above for how `Dialog.tsx` detects "visually finished" and why.
+1. A JS-driven `scrollLocked` class + a JS-measured `body.style.paddingRight`, compensating for a
+   `scrollbar-gutter` that toggled between `stable`/`auto`. Dropped after confirming, live across
+   several viewport widths and device pixel ratios, that a *permanent* `stable` needs no
+   measurement or compensation at all — the whole class of bug (wrong measurement, rounding,
+   `documentElement.clientWidth`'s CSSOM root-element special case) doesn't exist if the reserved
+   width never changes in the first place.
+2. Before that, a JS-positioned `<div>` painting `::backdrop`'s darkening onto the reserved strip,
+   to work around `scrollbar-color` having no Safari support. Dropped once `::backdrop` was
+   confirmed to already darken plain, never-toggled reserved space uniformly on its own — nothing
+   scrollbar-specific was left for it to fail at.
+
+The one real cost of going fully native and JS-free: the reserved gutter doesn't darken to match
+`::backdrop` while a dialog is open, and releases the instant `open` is removed rather than
+waiting for the closing fade — both accepted for the simplicity and correctness guarantee. Don't
+reintroduce JS-driven locking for this without re-confirming the native rule actually has a
+problem first, e.g. it didn't when this section was written.
+
+**Footgun for later, if width-measurement JS ever comes back here or elsewhere:**
+`document.documentElement.clientWidth` (the `<html>` element specifically) is a CSSOM special case
+that always returns the *viewport* width, ignoring any `scrollbar-gutter` reservation on itself —
+`document.body.clientWidth` is the one that reports the real, reduced width.
 
 ### A long `/** */` doc comment directly above a `.css.ts` `style()` call can crash SSR
 
@@ -274,9 +252,10 @@ uses `transition` + `@starting-style` + `allow-discrete` on `opacity`/`transform
 
 ## What this doesn't handle
 
-- **Nested dialogs.** Opening a second `Dialog` from inside one that's already open is untested and
-  likely wrong (native dialog stacking + our single scroll-lock toggle would need real thought, not
-  a guess) — treat as unsupported until a concrete need justifies building and testing it.
+- **Nested dialogs.** Opening a second `Dialog` from inside one that's already open is untested —
+  native dialog stacking would need real thought, not a guess, even though the `:has()`-based
+  scroll lock itself should keep matching as long as any dialog stays open. Treat as unsupported
+  until a concrete need justifies building and testing it.
 - **Screen-reader browse-mode reach into background content.** Verified: real mouse clicks and Tab
   navigation can't reach it. Not independently verified with an actual screen reader's virtual
   cursor — do that before relying on this for anything more sensitive than a login form.

@@ -1,8 +1,7 @@
 import type { Component, JSX } from 'solid-js';
-import { createEffect, createSignal, createUniqueId, onCleanup, Show, untrack } from 'solid-js';
+import { createEffect, createSignal, createUniqueId, Show, untrack } from 'solid-js';
 
 import { useI18n } from '@/common/libs/i18n';
-import { lockScroll, unlockScroll } from '@/common/libs/scroll-lock';
 
 import * as styles from './styles.css';
 
@@ -33,7 +32,6 @@ export const Dialog: Component<DialogProps> = (props) => {
     if (!ref) return;
     if (props.open) {
       setMounted(true);
-      lockScroll();
       // Deferred: `setMounted(true)`'s DOM update hasn't committed synchronously yet at this point
       // (verified live), so calling `showModal()` here has nothing but the always-rendered close
       // button to focus, taking focus away from the first real field once content does mount.
@@ -48,17 +46,10 @@ export const Dialog: Component<DialogProps> = (props) => {
     // transitions should count, not ones bubbling from still-mounted content inside it.
     void Promise.allSettled(ref.getAnimations().map((animation) => animation.finished)).then(() => {
       // untrack: one-time read once the promise settles, not a subscription. Guards a stale settle
-      // from an abandoned close arriving after a reopen already re-locked/re-mounted.
+      // from an abandoned close arriving after a reopen already re-mounted.
       if (untrack(() => props.open)) return;
       setMounted(false);
-      unlockScroll();
     });
-  });
-
-  // SSR disposes this component's owner right after rendering it, which fires onCleanup with no
-  // `document` — guard needed or every SSR response hangs. See Dialog/AGENTS.md.
-  onCleanup(() => {
-    if (!import.meta.env.SSR) unlockScroll();
   });
 
   // The only place `onClose` is called — Escape, the close button, and backdrop clicks all just
