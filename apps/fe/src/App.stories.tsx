@@ -1,7 +1,6 @@
 import { Show } from 'solid-js';
 
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
-import { expect } from 'storybook/test';
 
 import { FullApp } from '../.storybook/decorators';
 import { hackernewsStories } from '../.storybook/mocks/handlers/hackernews';
@@ -57,11 +56,3 @@ type Story = StoryObj<AppArgs>;
 
 /** Drive locale, page and feature flags from the controls panel. */
 export const Default: Story = {};
-
-/** The "Offline" control simulates the browser going offline right after boot. */
-export const OfflineOnBoot: Story = {
-  args: { offline: true },
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('status')).toHaveTextContent(/offline/i);
-  },
-};

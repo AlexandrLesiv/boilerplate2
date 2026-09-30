@@ -296,7 +296,7 @@ Use the `storybook-a11y` agent (`.claude/agents/storybook-a11y.md`) in two ways:
 
 Once violations are resolved, promote stories to `a11y: { test: 'error' }` in their parameters — this turns the Storybook a11y addon from a warning into a failing test.
 
-The `storybook-a11y` agent uses the Playwright MCP browser to snapshot the ARIA tree and verify keyboard navigation in the live Storybook. Make sure Storybook is running before invoking it in audit mode.
+The `storybook-a11y` agent uses the Playwright MCP browser to snapshot the ARIA tree and verify keyboard navigation in the live Storybook. Make sure Storybook is running **before the session starts** — the `storybook` server in `.mcp.json` is an HTTP transport (`http://localhost:6006/mcp`), connected once at session startup; unlike `playwright` (a stdio server that spawns its own process), starting Storybook after the session has already begun does not make the tool retroactively available. If the tools are missing, stop the session, start `pnpm --filter fe storybook`, and start a new one.
 
 ## Logging
 

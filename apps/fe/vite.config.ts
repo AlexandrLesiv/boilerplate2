@@ -38,7 +38,7 @@ export default defineConfig(async () => {
   return {
     plugins: [
       vanillaExtractPlugin(),
-      ...solidStart({ ssr: true, middleware: './src/middleware.ts' }),
+      ...solidStart({ ssr: true, devOverlay: false, middleware: './src/middleware.ts' }),
       htmlValidatePlugin(),
       serviceWorkerPlugin(),
       stripTypeboxPlugin(),

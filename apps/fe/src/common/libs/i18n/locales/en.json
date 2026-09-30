@@ -2,7 +2,8 @@
   "nav": {
     "home": "Home",
     "news": "News",
-    "login": "Login"
+    "login": "Login",
+    "logout": "Log out"
   },
   "pages": {
     "news": {
@@ -102,6 +103,9 @@
     "offline": {
       "message": "You're offline. Some features may not work until you reconnect.",
       "backOnline": "You're back online."
+    },
+    "dialog": {
+      "close": "Close"
     }
   }
 }

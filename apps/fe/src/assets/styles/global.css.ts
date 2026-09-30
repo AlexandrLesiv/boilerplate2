@@ -24,7 +24,13 @@ globalStyle('html', {
   fontSize: themeVars.typography.fontSizeNormal,
   lineHeight: 1.5,
   color: themeVars.color.text,
-  backgroundColor: '#ffffff',
+  backgroundColor: themeVars.color.surface,
+  // Reserves the scrollbar's width whether or not one is shown, so navigating between a short and
+  // a tall page never shifts content sideways. While a dialog is open, `scroll-lock.css.ts`'s
+  // `scrollLocked` switches this to `auto` and Dialog's own measured `padding-right` takes over —
+  // see Dialog/AGENTS.md ("Scrollbar gutter while open") for why.
+  scrollbarGutter: 'stable',
+  scrollbarColor: `${themeVars.color.border} ${themeVars.color.surface}`,
 });
 
 globalStyle('*, *::before, *::after', {

@@ -1,7 +1,22 @@
 import { style } from '@vanilla-extract/css';
 
+import { belowBreakpoint } from '@/assets/styles/responsive/breakpoints';
 import * as safeArea from '@/assets/styles/safe-area.css';
 import { themeVars } from '@/assets/styles/themes.css';
+
+// Hides the app shell behind a mobile full-screen dialog — `visibility`, not `display: none`,
+// since the latter would take the top-layer-promoted dialog down with it. See Dialog/AGENTS.md.
+export const appShell = style({
+  '@media': {
+    [belowBreakpoint('sm')]: {
+      selectors: {
+        '&:has(dialog[open])': {
+          visibility: 'hidden',
+        },
+      },
+    },
+  },
+});
 
 export const header = style({
   display: 'flex',
@@ -24,6 +39,14 @@ export const headerLeft = style({
 export const nav = style({
   display: 'flex',
   gap: '1rem',
+});
+
+// A single flex child alongside `headerLeft`, so `header`'s `space-between` pushes this whole
+// group to the right edge as one unit instead of spreading each of its children out evenly.
+export const headerRight = style({
+  display: 'flex',
+  gap: '1rem',
+  alignItems: 'center',
 });
 
 export const main = style({

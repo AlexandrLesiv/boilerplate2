@@ -18,6 +18,7 @@ import type { AppRouteInfo } from '@/common/libs/router';
 import { JsonLd } from '@/common/libs/seo/JsonLd';
 
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
+import { LoginDialog } from '../containers/LoginDialog/LoginDialog';
 import { OfflineStatus } from '../containers/OfflineStatus/OfflineStatus';
 import * as styles from './styles.css';
 
@@ -80,7 +81,7 @@ const RootLayout: Component<ParentProps> = (props) => {
         {/* Required: Suspense waits on loading resources even when they have an initialValue.
             Without it the nav's t() renders once server-side as the en default. */}
         <Suspense>
-          <div>
+          <div class={styles.appShell}>
             <header class={styles.header}>
               <div class={styles.headerLeft}>
                 <strong>SolidJS App</strong>
@@ -89,12 +90,14 @@ const RootLayout: Component<ParentProps> = (props) => {
                     {i18n.t().nav.home}
                   </A>
                   <A href={`${pfx()}/news`}>{i18n.t().nav.news}</A>
-                  <A href={`${pfx()}/login`}>{i18n.t().nav.login}</A>
                 </nav>
               </div>
-              <Show when={features().localeSwitcher}>
-                <LocaleSwitcher />
-              </Show>
+              <div class={styles.headerRight}>
+                <Show when={features().localeSwitcher}>
+                  <LocaleSwitcher />
+                </Show>
+                <LoginDialog />
+              </div>
             </header>
             <OfflineStatus />
             <main class={styles.main}>
