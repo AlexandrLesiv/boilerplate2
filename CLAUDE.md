@@ -11,11 +11,14 @@ from memory here produces work that typechecks, lints, and is wrong.
 
 So think in this order, and make the thinking visible in your response:
 
-**1. Name the dimensions before touching code.** `TODO.md` holds the project's `FLOWS` — the
-ordered list of concerns for writing a component and for writing a feature (functional edge
-cases → UX → Opquast → a11y → UI → styling edge cases → performance → SEO → … → implementation
-→ documentation). Walk the flow that matches the task and say which dimensions apply and which
-you are consciously skipping. Skipping is fine; skipping silently is not.
+**1. Name the dimensions before touching code.** `QUALITY.md` holds the project's `Requirements`
+— the full domain list (SEO, UX, Opquast, a11y, Web Vitals, Reliability, Monitoring, …) — and its
+`FLOWS`, the ordered subset of those domains for writing a component and for writing a feature
+(functional edge cases → UX → Opquast → a11y → UI → styling edge cases → performance → SEO → …
+→ implementation → documentation). Walk the flow that matches the task and say which dimensions
+apply and which you are consciously skipping. Skipping is fine; skipping silently is not. If
+you're unsure what a domain requires, `QUALITY.md`'s "Quality check sources" section links the
+standard each one is drawn from — check it rather than reasoning from memory.
 
 **2. Verify every load-bearing assumption before designing on it.** An assumption is
 load-bearing if a different answer would change the design. Check it, in rough order of cost:
@@ -31,11 +34,20 @@ load-bearing if a different answer would change the design. Check it, in rough o
 obvious approach, say so in one line. That sentence is usually the most valuable thing in the
 whole response, and it is what should end up in the docs.
 
-**4. Ask only when the answer changes the work.** Where the server gets flag values from, or
+**4. Name the risk before you accept it, and push back if it's the wrong call.** If doing the
+task as asked means quietly falling short on a `QUALITY.md` domain — a missed a11y state, a
+perf cost, no monitoring hook, a reliability gap — say so in one line before writing code: which
+domain, what the risk is, and what you'd do instead. If the better path costs about the same,
+just take it and say what you decided (see step 5). If it costs materially more scope, time, or
+changes what was asked, push back with the tradeoff and let the user decide — don't silently
+downgrade quality to match the letter of the request, and don't silently upgrade scope to match
+your own bar either.
+
+**5. Ask only when the answer changes the work.** Where the server gets flag values from, or
 whether the client polls, changes the architecture — ask. Naming, file placement, and which
 helper to reuse do not — decide, and mention what you decided.
 
-**5. Implement, then prove the mechanism engaged.** Not that it compiles — that it *works*.
+**6. Implement, then prove the mechanism engaged.** Not that it compiles — that it *works*.
 `pnpm check` cannot see that a define was replaced, a tag reached the sidebar, or a watcher
 fired. Two real examples from this repo, both of which passed every check while doing nothing:
 
@@ -47,7 +59,7 @@ fired. Two real examples from this repo, both of which passed every check while 
 
 In both cases the check that caught it was looking at the artifact, not the source.
 
-**6. Report gaps explicitly.** If part of the scope is unfinished, blocked, or deliberately
+**7. Report gaps explicitly.** If part of the scope is unfinished, blocked, or deliberately
 left out, say which part and why. Do not let a green check stand in for a claim you did not
 verify, and do not describe an unverified path as working.
 
@@ -462,6 +474,8 @@ body) with `markResponseStatus` from `common/libs/http/response-status`, and pas
 any `ErrorState` rendered as a fallback.
 
 **Trailing slashes**: exactly one URL form is valid — the slash-free one. `src/middleware.ts` 301-redirects any path ending in `/` (root excepted) to the slash-free form, preserving the query string. Do not author links with trailing slashes, and keep `canonical`/`hreflang` hrefs slash-free so they agree with the redirect target.
+
+**Same-page hash links (`href="#id"`) never move focus on their own.** solid-router intercepts every same-origin anchor click, including pure hash links, and its own hash handling only scrolls — never focuses — the target. A plain anchor looks correct (it scrolls) while silently failing any requirement that depends on focus actually moving. See `views/components/SkipLinks/AGENTS.md` for the fix (manual `preventDefault` + `.focus()` in the anchor's own `onClick`) and why it also needs `tabindex={-1}` on the target.
 
 Use full paths for "sub-pages":
 ```ts

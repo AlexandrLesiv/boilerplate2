@@ -18,6 +18,7 @@ import type { AppRouteInfo } from '@/common/libs/router';
 import { JsonLd } from '@/common/libs/seo/JsonLd';
 
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
+import { SkipLinks } from '../components/SkipLinks/SkipLinks';
 import { LoginDialog } from '../containers/LoginDialog/LoginDialog';
 import { OfflineStatus } from '../containers/OfflineStatus/OfflineStatus';
 import * as styles from './styles.css';
@@ -82,6 +83,7 @@ const RootLayout: Component<ParentProps> = (props) => {
             Without it the nav's t() renders once server-side as the en default. */}
         <Suspense>
           <div class={styles.appShell}>
+            <SkipLinks />
             <header class={styles.header}>
               <div class={styles.headerLeft}>
                 <strong>SolidJS App</strong>
@@ -100,7 +102,7 @@ const RootLayout: Component<ParentProps> = (props) => {
               </div>
             </header>
             <OfflineStatus />
-            <main class={styles.main}>
+            <main id="main-content" tabindex={-1} class={styles.main}>
               <Suspense>{props.children}</Suspense>
             </main>
           </div>

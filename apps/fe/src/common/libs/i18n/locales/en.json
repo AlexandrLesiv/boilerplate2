@@ -94,6 +94,8 @@
     }
   },
   "common": {
+    "skipLinksLabel": "Skip links",
+    "skipLink": "Skip to main content",
     "loading": "Loading…",
     "loadingSlow": "This is taking longer than usual…",
     "image": {

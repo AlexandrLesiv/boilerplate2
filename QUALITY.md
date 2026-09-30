@@ -11,6 +11,7 @@ Requirements:
 - FE Performance
 - BE Performance
 - Accessibility
+- Safe triangles
 - All charts should have textual representation
 - Semantic tags
 - External links are marked
