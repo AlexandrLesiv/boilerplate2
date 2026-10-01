@@ -5,7 +5,7 @@ import { assignVars, globalStyle } from '@vanilla-extract/css';
 import { baseColorTheme } from './color/base';
 import { nightColorTheme } from './color/night';
 import { belowBreakpoint } from './responsive/breakpoints';
-import { FONT_SIZE_NARROW, FONT_SIZE_NORMAL, themeVars } from './themes.css';
+import { FONT_SIZE_NORMAL, themeVars } from './themes.css';
 
 globalStyle(':root', {
   vars: {
@@ -15,9 +15,6 @@ globalStyle(':root', {
   '@media': {
     '(prefers-color-scheme: dark)': {
       vars: assignVars(themeVars.color, nightColorTheme),
-    },
-    [belowBreakpoint('sm')]: {
-      vars: assignVars(themeVars.typography, { fontSizeNormal: FONT_SIZE_NARROW }),
     },
   },
 });
@@ -35,6 +32,18 @@ globalStyle('html', {
   // instead; dropped after confirming this permanent `stable` alone is jitter-free.
   scrollbarGutter: 'stable',
   scrollbarColor: `${themeVars.color.border} ${themeVars.color.surface}`,
+  '@media': {
+    [belowBreakpoint('sm')]: {
+      // `stable` reserves gutter space whether or not a scrollbar actually renders — which real
+      // mobile browsers never do (overlay scrollbars, zero reserved width), so this bought nothing
+      // there, but it does get respected by percentage *and* `vw`-based width calculations
+      // elsewhere (confirmed live: a top-layer dialog's `width: 100%`/`100vw` both resolved 15px
+      // short of the real viewport width at 320px, until this was reset). `Dialog`'s own mobile
+      // full-screen takeover (Dialog/styles.css.ts) is exactly that kind of calculation — see
+      // Dialog/AGENTS.md.
+      scrollbarGutter: 'auto',
+    },
+  },
   // Mobile WebKit/Blink paint a default gray/blue touch-feedback overlay on the tapped element,
   // independent of normal paint order — on a `Lightbox` trigger it was reported visible on top of
   // the dialog's own backdrop and enlarging image for a moment after tapping, since the highlight
@@ -71,8 +80,12 @@ globalStyle('body', {
   color: themeVars.color.text,
 });
 
+// `linkText`, not `primary` — `primary` measures 3.51:1 as text on `surface`, under WCAG AA's
+// 4.5:1 for normal text. Found live via `Link`'s `a11y: { test: 'error' }` story, the first thing
+// in this app to actually enforce contrast on a bare colored-text link; this bare `a` rule had
+// the identical bug the whole time. See `color/base.ts`'s comment on `linkText`.
 globalStyle('a', {
-  color: themeVars.color.primary,
+  color: themeVars.color.linkText,
   textDecoration: 'none',
 });
 

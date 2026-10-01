@@ -25,12 +25,19 @@ element tag name strings, not just components. This keeps the actual semantic el
 screen reader's heading navigation, a crawler's outline parsing, and `:focus`-related UA defaults
 all come from the tag itself, not from an ARIA role bolted onto a `<div>`.
 
-## Sizes are `rem`, not `px` — intentionally inherits the app's narrow/normal breakpoint swap
+## Sizes are `rem`, not `px` — tracks the root font-size, not a breakpoint
 
-`themes.css.ts`'s `fontSizeNormal` token (and therefore `html`'s own font-size) already drops from
-16px to 12px below the `sm` breakpoint. Every `size` variant here is a plain `rem` multiple, so it
-shrinks along with the rest of the page's text automatically — no separate per-heading media query
-needed, and no risk of this scale drifting out of proportion with body text on narrow viewports.
+Every `size` variant is a plain `rem` multiple of `themes.css.ts`'s `fontSizeNormal` token (and
+therefore `html`'s own font-size), rather than a hardcoded pixel value — if that single root value
+is ever revisited, the whole scale moves with it, with no separate per-heading rule to update.
+
+This used to also mean the whole scale shrank on mobile, when `fontSizeNormal` itself dropped from
+16px to 12px below the `sm` breakpoint — removed after checking real mobile-typography practice
+(not assumed): smaller text on mobile is backwards from nearly every mobile-typography guideline,
+confirmed against a reference site's own live computed styles (their mobile body text measured
+barely smaller than desktop, never below ~20px — nowhere near a 25% cut). See `themes.css.ts`'s
+own comment on `FONT_SIZE_NORMAL` for the full reasoning and why this also affected every
+`rem`-based spacing value site-wide, not just text.
 
 ## A multi-`<h1>` dev check was considered and explicitly not built
 

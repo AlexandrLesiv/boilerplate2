@@ -2,13 +2,13 @@ import { assignVars, createTheme, createThemeContract, style } from '@vanilla-ex
 
 import { baseColorTheme } from './color/base';
 import { nightColorTheme } from './color/night';
-import { belowBreakpoint } from './responsive/breakpoints';
 
 export const themeVars = createThemeContract({
   color: {
     primary: '',
     primaryHover: '',
     primaryContrast: '',
+    linkText: '',
     surface: '',
     surfaceHover: '',
     border: '',
@@ -22,9 +22,14 @@ export const themeVars = createThemeContract({
   },
 });
 
-// Ordinary, two-step typography — one size below `sm`, one at/above it — reusing the same
-// breakpoint scale everything else in this app switches on, instead of a continuous `clamp()`.
-export const FONT_SIZE_NARROW = '12px';
+// One size, every viewport — deliberately not smaller on mobile. A narrower `FONT_SIZE_NARROW`
+// step (12px) used to apply below `sm`; removed after checking real mobile-typography practice
+// (and a reference site's own live computed styles) rather than assuming "smaller screen, smaller
+// text" was the right default — smaller mobile text is backwards from nearly every mobile-
+// typography guideline, and it was also shrinking every `rem`-based spacing value site-wide by the
+// same factor as an unintended side effect, since `html`'s own font-size drove this var. See
+// `global.css.ts` (where this var is actually applied to `:root`) and `LoginDialog/styles.css.ts`
+// for a `rem`-based floor that depended on this value possibly differing from 16px.
 export const FONT_SIZE_NORMAL = '16px';
 
 // The classic typographic "measure" — 45-75 characters per line is the generally agreed-on
@@ -46,9 +51,6 @@ export const generalTheme = style({
   '@media': {
     '(prefers-color-scheme: dark)': {
       vars: assignVars(themeVars.color, nightColorTheme),
-    },
-    [belowBreakpoint('sm')]: {
-      vars: assignVars(themeVars.typography, { fontSizeNormal: FONT_SIZE_NARROW }),
     },
   },
 });

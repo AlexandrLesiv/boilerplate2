@@ -2,9 +2,9 @@ import { style, styleVariants } from '@vanilla-extract/css';
 
 import { themeVars } from '@/assets/styles/themes.css';
 
-// `rem`, not a fixed `px` scale — every size below shrinks along with the rest of the page's text
-// when `themeVars.typography.fontSizeNormal` narrows below the `sm` breakpoint (themes.css.ts),
-// instead of competing with that mechanism with its own, separate responsive rule.
+// `rem`, not a fixed `px` scale — tracks the root font-size (`themeVars.typography.fontSizeNormal`,
+// themes.css.ts) rather than a hardcoded pixel value, so the whole scale moves together if that
+// single root value is ever revisited, instead of this needing its own separate update.
 export const base = style({
   color: themeVars.color.text,
   fontWeight: 700,
