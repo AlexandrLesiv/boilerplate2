@@ -14,6 +14,7 @@ Requirements:
 - Safe triangles
 - All charts should have textual representation
 - Semantic tags
+- tap highlight handling
 - External links are marked
 - Design System Compliance
 - Functional Edge Cases

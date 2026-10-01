@@ -18,6 +18,7 @@ export interface NativeDialogHandle {
   element: () => HTMLDialogElement | undefined;
   mounted: Accessor<boolean>;
   handleNativeClose: () => void;
+  handleCancel: (event: Event) => void;
 }
 
 // Extracted from Dialog — see Dialog/AGENTS.md for why each step exists (microtask-deferred
@@ -83,5 +84,13 @@ export const useNativeDialog = (props: UseNativeDialogOptions): NativeDialogHand
     element: () => ref,
     mounted,
     handleNativeClose: () => props.onClose(),
+    // Escape fires native `cancel` before the dialog actually closes, and is cancelable —
+    // preventing it stops the same immediate-native-close bypass `handleNativeClose`'s own doc
+    // comment above describes, routing Escape through `onClose` too instead of letting the
+    // browser close the dialog on its own. Both consumers wire this to the dialog's `onCancel`.
+    handleCancel: (event: Event) => {
+      event.preventDefault();
+      props.onClose();
+    },
   };
 };

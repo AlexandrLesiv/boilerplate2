@@ -1,8 +1,9 @@
 import type { JSX } from 'solid-js';
 import { createEffect, createMemo, createSignal, createUniqueId, Show, untrack } from 'solid-js';
 
+import { runAnimatedClose } from '@/common/libs/dialog/animatedClose';
 import { useNativeDialog } from '@/common/libs/dialog/useNativeDialog';
-import { flipFrom, flipTo, reducedMotionDurationMs } from '@/common/libs/flip';
+import { flipFrom, flipTo } from '@/common/libs/flip';
 import { format, useI18n } from '@/common/libs/i18n';
 import { useLogger } from '@/common/libs/logger';
 import type { RenderProp } from '@/common/types';
@@ -28,25 +29,6 @@ export interface LightboxProps<T> {
   // Omit to skip the grow-from-thumbnail morph and fall back to a plain fade.
   getTriggerElement?: (id: LightboxItem<T>['id']) => HTMLElement | null | undefined;
 }
-
-// Resolves once the dialog's own `data-closing` background-color transition (styles.css.ts)
-// finishes, or immediately under reduced motion — mirrors `flip`'s own reduced-motion handling
-// via the shared `reducedMotionDurationMs` check, since this transition has no stylesheet rule
-// of its own for `prefers-reduced-motion` to hook into (it's toggled by attribute, not a class
-// Lightbox owns a dedicated media query for).
-const waitForBackdropFade = (dialogEl: HTMLElement): Promise<void> =>
-  new Promise((resolve) => {
-    if (reducedMotionDurationMs(LIGHTBOX_TRANSITION_MS) === 0) {
-      resolve();
-      return;
-    }
-    const onEnd = (event: TransitionEvent) => {
-      if (event.target !== dialogEl || event.propertyName !== 'background-color') return;
-      dialogEl.removeEventListener('transitionend', onEnd);
-      resolve();
-    };
-    dialogEl.addEventListener('transitionend', onEnd);
-  });
 
 // Generic component: can't use the `Component<P>` alias (no type-param slot), so this is a plain
 // function returning JSX.Element, same shape Solid's compiler expects.
@@ -106,7 +88,7 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
     logger.event('lightbox.navigate', { index: next, total: total() });
   });
 
-  const { setRef, element, mounted, handleNativeClose } = useNativeDialog({
+  const { setRef, element, mounted, handleNativeClose, handleCancel } = useNativeDialog({
     open: isOpen,
     onClose: () => props.onClose(),
     runTransition: (mutate) => {
@@ -147,22 +129,18 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
       }
       // Drives the backdrop fade ourselves (styles.css.ts's `data-closing` rule) and waits for it
       // alongside the content FLIP, calling native `close()` only once both have actually
-      // finished — not immediately after starting them. See styles.css.ts and the note above
-      // `runFlip` in `common/libs/flip/index.ts` for why `close()` can no longer run right away.
-      dialogEl.setAttribute('data-closing', 'true');
+      // finished — not immediately after starting them. Shared with Dialog's identical
+      // close-animation mechanism — see common/libs/dialog/animatedClose.ts and Lightbox/AGENTS.md.
       const triggerRect = props.getTriggerElement?.(activeItem().id)?.getBoundingClientRect();
-      const animations = [waitForBackdropFade(dialogEl)];
+      const extra: Promise<void>[] = [];
       if (contentRef && triggerRect) {
         // Re-asserted here, not just relied on from open/navigate — this is the ratio `flipTo`
         // measures `contentRef`'s *current* box against a moment from now, so it has to be
         // correct for the item actually being closed, not whatever the last navigate left behind.
         setContentRatio(triggerRect);
-        animations.push(flipTo(contentRef, triggerRect, { durationMs: LIGHTBOX_TRANSITION_MS }));
+        extra.push(flipTo(contentRef, triggerRect, { durationMs: LIGHTBOX_TRANSITION_MS }));
       }
-      void Promise.all(animations).then(() => {
-        dialogEl.removeAttribute('data-closing');
-        mutate();
-      });
+      runAnimatedClose(dialogEl, LIGHTBOX_TRANSITION_MS, mutate, extra);
     },
   });
 
@@ -182,14 +160,6 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
   // and runs the real animated close, only calling native `close()` itself once that finishes.
   const handleBackdropClick = (event: MouseEvent) => {
     if (event.target === element()) props.onClose();
-  };
-
-  // Escape fires native `cancel` before the dialog actually closes, and is cancelable —
-  // preventing it stops the same immediate-native-close bypass described above, routing Escape
-  // through `onClose` too instead of letting the browser close the dialog on its own.
-  const handleCancel = (event: Event) => {
-    event.preventDefault();
-    props.onClose();
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {

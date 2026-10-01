@@ -1,0 +1,21 @@
+import { style } from '@vanilla-extract/css';
+
+import { THUMBNAIL_SIZE } from './constants';
+
+export const coverGallery = style({
+  display: 'flex',
+  gap: '0.5rem',
+});
+
+// `Image` is fluid (`width: 100%`) by design — it fills whatever box it's given, it doesn't
+// impose one. Without an explicit size here, this button (a flex item with no width of its own)
+// stretched to fill available flex space instead of showing a 160x90 thumbnail.
+export const coverTrigger = style({
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  width: `${THUMBNAIL_SIZE.width}px`,
+  height: `${THUMBNAIL_SIZE.height}px`,
+  flexShrink: 0,
+});

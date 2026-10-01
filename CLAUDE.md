@@ -126,7 +126,19 @@ components based on app state, `containers/`.
 - **`createMutation(route)`** for POST/PUT/DELETE — call inside a component (it's a hook that reads locale from `useI18n`), returns a typed async function for use in event handlers.
 - **TypeBox is stripped from the client bundle** — `vite-plugins/strip-typebox.ts` replaces `@sinclair/typebox` with a no-op Proxy in the `client` Vite environment. Do not rely on TypeBox runtime behavior in browser code.
 - **Response envelope** from `@repo/shared`: `{ data: T[], meta: { total, isOk } }` for lists, `{ data: T }` for singles.
-- **Styles**: Vanilla Extract `.css.ts` files only. No inline styles, no CSS modules, no Tailwind.
+- **Styles**: Vanilla Extract `.css.ts` files only. No inline `style={{...}}` objects, no CSS
+  modules, no Tailwind — including for one-off sizing/layout tweaks on a single page; a page gets
+  its own colocated `styles.css.ts` the same as any component. A value that looks like it "has to"
+  be inline is almost always one of two already-solved cases, not an exception to this rule:
+  - **A static value shared between JS and CSS** (a pixel size, a duration) — put it in a plain
+    `constants.ts` with no `style()` calls, and import it into both the component and
+    `styles.css.ts`. One `.css.ts` file cannot import a value from another file that itself calls
+    `style()` — that breaks vanilla-extract's file-scope tracking and crashes SSR — which is why
+    this goes through a third, neutral file rather than either styling file importing the other.
+    See `Dialog/constants.ts` / `ArticlePage/constants.ts` for this pattern in practice.
+  - **A genuinely per-instance runtime value** (varies per element, not just per page) — set a CSS
+    custom property imperatively (`el.style.setProperty('--foo', value)`) and reference `var(--foo)`
+    in the stylesheet. See `Lightbox.tsx`'s `--lightbox-ratio` for this pattern in practice.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
 
 ## Node APIs

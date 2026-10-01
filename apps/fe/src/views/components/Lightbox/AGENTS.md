@@ -190,24 +190,28 @@ transitions, never `.content`'s FLIP — fixed, and worth keeping (see the comme
 fix can address a CSS `display: none` that already happened.
 
 **The fix drives the close fade itself, decoupled from native `close()` entirely.** `Lightbox.tsx`
-toggles a `data-closing` attribute on the dialog (see the higher-specificity `&:modal[data-closing]`
-rule in `styles.css.ts`), runs that fade in parallel with the content `flipTo`, and only calls
-native `close()` — via `mutate()` — once *both* have actually finished (`Promise.all`, including
-`waitForBackdropFade`'s own `transitionend` listener). By the time `close()` runs, there's nothing
-left to visually animate, so it no longer matters whether the engine defers `display: none` or
-applies it instantly. `styles.css.ts` dropped the `overlay`/`display` `allow-discrete` transitions
-entirely — they're no longer needed and keeping them would misleadingly suggest they still do
-something.
+runs the content `flipTo` alongside a `data-closing`-driven backdrop fade (see the
+higher-specificity `&:modal[data-closing]` rule in `styles.css.ts`) and only calls native
+`close()` once *both* have actually finished. The `data-closing`-toggle-and-wait part of this isn't
+written in `Lightbox.tsx` itself — it's `runAnimatedClose` (`common/libs/dialog/animatedClose.ts`),
+shared with `Dialog`, which hit the identical bug afterward and needed the identical fix (see
+`Dialog/AGENTS.md`'s "Close animation needs its own `data-closing` state"). `Lightbox.tsx`'s close
+branch is `runAnimatedClose(dialogEl, LIGHTBOX_TRANSITION_MS, mutate, extra)`, where `extra` is an
+array holding the content `flipTo` promise when there's a trigger rect to shrink into. By the time
+`close()` runs, there's nothing left to visually animate, so it no longer matters whether the
+engine defers `display: none` or applies it instantly. `styles.css.ts` dropped the
+`overlay`/`display` `allow-discrete` transitions entirely — they're no longer needed and keeping
+them would misleadingly suggest they still do something.
 
 This has been reasoned through but still not verified firsthand against a real Safari or Firefox
 session from this environment — the `firefox-devtools` MCP server was unavailable (connection
 failure) while this was built, and the configured `playwright` MCP server defaults to Chromium
 with no `--browser firefox`/`webkit` arg. The live report that prompted this fix came from the
 user testing directly, not from this environment's own tooling. If "jumps to the end on close"
-reappears after this, suspect the `data-closing` attribute not actually being set on the right
-element (`element()` returning `undefined`, e.g. the ref not attached yet) or the `transitionend`
-listener's `propertyName` check no longer matching because `styles.css.ts`'s transition list
-changed shape.
+reappears on either component, suspect the `data-closing` attribute not actually being set on the
+right element (`element()` returning `undefined`, e.g. the ref not attached yet) first —
+`runAnimatedClose`'s own wait no longer filters by `event.propertyName`, so a stylesheet's
+transition list changing shape can't silently break it the way it could before this was shared.
 
 ## The actual, final bug: Lightbox's own UI never went through any of the above at all
 
@@ -234,7 +238,14 @@ through the parent's `activeIndex` state first, so by the time `useNativeDialog`
 wait, native `close()` only at the very end — actually executes. Escape needed its own handling
 because it doesn't go through either button: the native `cancel` event fires first and is
 cancelable, so `onCancel` calls `preventDefault()` and routes through `props.onClose()` the same
-way, instead of letting the browser close the dialog on its own.
+way, instead of letting the browser close the dialog on its own. That `onCancel` handler
+(`handleCancel`) isn't written in `Lightbox.tsx` anymore — `Dialog` needed the identical
+`preventDefault`-then-`onClose` one-liner for the identical reason, so it's now
+`useNativeDialog`'s own returned `handleCancel`, used by both.
+
+The raw `close()` handle this section describes no longer exists at all — `useNativeDialog` never
+returns one, so this specific bug has no path back in; any future consumer of the hook gets the
+same guarantee for free.
 
 This is the one fix in this file that was verified by directly instrumenting the live DOM
 (sampling `getComputedStyle(contentRef).transform` and `dialog.open` on a timer across the actual

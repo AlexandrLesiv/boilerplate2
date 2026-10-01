@@ -35,6 +35,13 @@ globalStyle('html', {
   // instead; dropped after confirming this permanent `stable` alone is jitter-free.
   scrollbarGutter: 'stable',
   scrollbarColor: `${themeVars.color.border} ${themeVars.color.surface}`,
+  // Mobile WebKit/Blink paint a default gray/blue touch-feedback overlay on the tapped element,
+  // independent of normal paint order — on a `Lightbox` trigger it was reported visible on top of
+  // the dialog's own backdrop and enlarging image for a moment after tapping, since the highlight
+  // isn't just a regular CSS-painted box the dialog's top-layer promotion would stack above.
+  // Inherited from here rather than set per element, same reasoning as the box-sizing reset below:
+  // nothing in this app's custom-styled buttons/links wants the browser's default tap feedback.
+  WebkitTapHighlightColor: 'transparent',
 });
 
 // Background scroll lock for any open native `<dialog>`, not just this app's own `Dialog`

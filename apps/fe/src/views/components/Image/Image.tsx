@@ -57,6 +57,11 @@ export const Image: Component<ImageProps> = (props) => {
         loading={local.preload ? 'eager' : 'lazy'}
         decoding={local.preload ? 'sync' : 'async'}
         fetchpriority={local.preload ? 'high' : 'auto'}
+        // `<img>` is draggable by default in every browser (native "drag to save/open" gesture) —
+        // nothing in this app uses that, and it fights with click targets that happen to be
+        // images, e.g. a Lightbox trigger: a mousedown-drag on the thumbnail starts a native drag
+        // instead of registering as a click.
+        draggable={false}
         class={styles.imageEl}
         classList={{
           [styles.imageElHidden]: failed(),

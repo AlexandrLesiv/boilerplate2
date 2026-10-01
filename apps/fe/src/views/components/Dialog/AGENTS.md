@@ -71,11 +71,14 @@ native fallback focus (no explicit `autofocus` anywhere) lands on the real first
 
 ## Every dismissal path calls `props.onClose()` — none of them call `ref.close()` directly
 
-This inverts an earlier design, documented below for why it had to change. Escape (via `onCancel`,
-intercepted with `preventDefault()`), the close button, and a backdrop click all call
-`props.onClose()`. None of them call the native `ref.close()` themselves — there's no raw `close()`
-handle exposed from `useNativeDialog` for `Dialog` to call anymore (removed; it had exactly one
-caller, and this was it).
+This inverts an earlier design, documented below for why it had to change. Escape, the close
+button, and a backdrop click all call `props.onClose()`. None of them call the native
+`ref.close()` themselves — there's no raw `close()` handle exposed from `useNativeDialog` for
+`Dialog` to call anymore (removed; it had exactly one caller, and this was it). Escape's handler
+(`handleCancel`, wired to the dialog's `onCancel`) isn't written locally anymore either — it's
+`useNativeDialog`'s own returned `handleCancel`, since `Lightbox` needed the identical
+`event.preventDefault(); props.onClose();` one-liner and there's no reason for two copies of it
+to exist and potentially drift.
 
 **Why this changed.** The previous design had all three call `ref.close()` directly, relying on the
 native `close` event firing `props.onClose()` as the single notification path. That's simpler, but
@@ -223,15 +226,31 @@ real platform feature for exactly this, but depending on it to keep the box aliv
 animate closed doesn't hold outside Chrome: reported live snapping straight to fully closed, with
 no visible fade at all, in both Safari and Firefox. `Lightbox` hit the identical bug first (see
 `Lightbox/AGENTS.md`'s "Close depended on `allow-discrete`/`overlay`...") and the fix here is the
-same one, ported over rather than re-derived: drive the close state from a `data-closing` attribute
-set by JS, let `&:modal[data-closing="true"]` (higher specificity than `&:modal` alone, so it wins
-while still modal) apply the closed look, and only call native `close()` — via `mutate`, from
-`runTransition` in `Dialog.tsx` — once that transition has actually finished
-(`waitForCloseTransition`'s `transitionend` listener, or immediately under reduced motion). By the
-time `close()` runs there's nothing left to animate, so it no longer matters whether the engine
-defers `display: none` or applies it instantly, and the `overlay`/`display` `allow-discrete`
-transitions were dropped from `styles.css.ts` entirely — keeping them would misleadingly suggest
-they still do something.
+same one: drive the close state from a `data-closing` attribute set by JS, let
+`&:modal[data-closing="true"]` (higher specificity than `&:modal` alone, so it wins while still
+modal) apply the closed look, and only call native `close()` once that transition has actually
+finished. By the time `close()` runs there's nothing left to animate, so it no longer matters
+whether the engine defers `display: none` or applies it instantly, and the `overlay`/`display`
+`allow-discrete` transitions were dropped from `styles.css.ts` entirely — keeping them would
+misleadingly suggest they still do something.
+
+**This mechanism is not written locally — it's `runAnimatedClose`
+(`common/libs/dialog/animatedClose.ts`), shared with `Lightbox`.** The first pass at this fix
+*did* write it locally (a `waitForCloseTransition` matching on `event.propertyName === 'opacity'`),
+reusing only `reducedMotionDurationMs` from `common/libs/flip`. That lasted about as long as it
+took to notice `Lightbox` already had its own near-identical `waitForBackdropFade` — same shape,
+different hardcoded property name (`'background-color'`), independently re-derived rather than
+shared, for the exact same bug. Two components separately discovering and separately fixing one
+mechanism is itself the signal that it belongs in `common/libs/dialog/`, not a style preference —
+`runTransition`'s close branch here is now just
+`runAnimatedClose(dialogEl, DIALOG_TRANSITION_MS, mutate)`, and `Lightbox.tsx`'s is the same call
+with an `extra` array of promises (its content FLIP) tacked on. The shared version also drops the
+`propertyName` filter entirely — it only checks `event.target === element`, resolving on the
+*first* `transitionend` to fire on the dialog regardless of which property caused it, since
+nothing else is transitioning on a dialog element while `[data-closing]` is set. That removes the
+fragility a hardcoded property name had: the filtered version would have silently stopped working
+the moment either stylesheet's transition list changed shape without the matching JS being
+updated — exactly the risk both components' `AGENTS.md` flagged independently before this existed.
 
 One gap worth knowing about: `::backdrop`'s own `opacity` transition wasn't zeroed under
 `prefers-reduced-motion: reduce` before this — vanilla-extract's `@media` block only zeroes the
@@ -242,17 +261,18 @@ in the background after unmount. Fixed by giving `::backdrop` its own `transitio
 entry inside the same reduced-motion `@media` block, matching what `Lightbox/styles.css.ts` already
 does for its backdrop.
 
-Verified live via Playwright (Chromium): sampling the dialog's `getComputedStyle().opacity` every
-frame through a close click shows a smooth decay from `1` to `0` over ~150ms, with `open` staying
-`true` and `data-closing="true"` the entire time, only flipping to `open: false` /
-`data-closing: null` once the fade has actually reached `0`. Not independently re-verified against
-real Safari or Firefox from this environment — no Firefox/WebKit-backed MCP tool was connected this
-session (Playwright here defaults to Chromium). The fix is mechanically identical to the one
-already confirmed, by direct user testing, to fix the same symptom in `Lightbox` across all three
-engines — it removes the exact `allow-discrete` dependency that caused it there too — but if a
-close-animation jump is reported again specifically on this component, check first whether
-`data-closing` is actually landing on the right element before assuming the mechanism itself
-regressed.
+Verified live via Playwright (Chromium), both before and after extracting `runAnimatedClose`:
+sampling the dialog's `getComputedStyle().opacity` every frame through a close click shows a
+smooth decay from `1` to `0` over ~150ms, with `open` staying `true` and `data-closing="true"` the
+entire time, only flipping to `open: false` / `data-closing: null` once the fade has actually
+reached `0`. Not independently re-verified against real Safari or Firefox from this environment —
+no Firefox/WebKit-backed MCP tool was connected this session (Playwright here defaults to
+Chromium). The fix is mechanically identical to the one already confirmed, by direct user testing,
+to fix the same symptom in `Lightbox` across all three engines — it removes the exact
+`allow-discrete` dependency that caused it there too — but if a close-animation jump is reported
+again on either component, check first whether `data-closing` is actually landing on the right
+element before assuming the shared mechanism itself regressed (a regression there would show up on
+*both* components at once, which is itself a useful diagnostic signal now).
 
 ## Scrollbar gutter while open — one declarative rule, no JS at all
 
