@@ -4,6 +4,10 @@
       "command": "pnpx",
       "args": ["@playwright/mcp@latest"]
     },
+    "firefox-devtools": {
+      "command": "pnpx",
+      "args": ["@mozilla/firefox-devtools-mcp@latest"]
+    },
     "storybook": {
       "url": "http://localhost:6006/mcp",
       "type": "http"

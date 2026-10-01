@@ -20,6 +20,8 @@ export interface ImageProps extends Omit<
   /** Above-the-fold / LCP image: eager + sync decode, high fetch priority, and an SSR preload `<link>`. */
   preload?: boolean;
   class?: string;
+  /** `cover` crops to fill a fixed box (thumbnails); `contain` letterboxes instead of cropping. @default 'cover' */
+  fit?: 'cover' | 'contain';
 }
 
 /**
@@ -31,7 +33,7 @@ export interface ImageProps extends Omit<
  * the browser actually fires `error` on the `<img>`.
  */
 export const Image: Component<ImageProps> = (props) => {
-  const [local, rest] = splitProps(props, ['src', 'alt', 'width', 'height', 'preload', 'class']);
+  const [local, rest] = splitProps(props, ['src', 'alt', 'width', 'height', 'preload', 'class', 'fit']);
   const [failed, setFailed] = createSignal(false);
   const { t } = useI18n();
   const logger = useLogger();
@@ -39,7 +41,10 @@ export const Image: Component<ImageProps> = (props) => {
   const decorative = () => local.alt === '';
 
   return (
-    <div class={[styles.imageContainer, local.class].filter(Boolean).join(' ')}>
+    <div
+      class={[styles.imageContainer, local.class].filter(Boolean).join(' ')}
+      classList={{ [styles.imageContainerFill]: !!local.fit }}
+    >
       <Show when={local.preload}>
         <Link rel="preload" as="image" href={local.src} fetchpriority="high" />
       </Show>
@@ -53,7 +58,11 @@ export const Image: Component<ImageProps> = (props) => {
         decoding={local.preload ? 'sync' : 'async'}
         fetchpriority={local.preload ? 'high' : 'auto'}
         class={styles.imageEl}
-        classList={{ [styles.imageElHidden]: failed() }}
+        classList={{
+          [styles.imageElHidden]: failed(),
+          [styles.imageElFill]: !!local.fit,
+          [styles.imageElContain]: local.fit === 'contain',
+        }}
         onError={() => {
           if (failed()) return;
           setFailed(true);

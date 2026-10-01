@@ -29,6 +29,17 @@ by default, and a fallback that engages on the native `error` event.
 - **No responsive `srcset`/`<picture>` support.** There is no image transform pipeline (build step
   or CDN) anywhere in this repo yet — `src` is a single URL. Add format/width negotiation only once
   something actually produces the variants; building the API for it on faith would be guessing.
+- **`width`/`height` attributes are an aspect-ratio *hint*, not a rendered-size guarantee —
+  `fit` is what actually constrains the box.** By default (`fit` unset) the `<img>` is
+  `width: 100%; height: auto`, so it always renders at its *own* aspect ratio regardless of the
+  `width`/`height` attributes passed in — fine for a plain responsive image, but it means
+  `object-fit: cover` never gets a mismatched box to crop into, and the image silently overflows
+  whatever box you expected it to fill. This was a real bug, not a hypothetical: a 640x437 photo
+  passed `width={160} height={90}` rendered at ~160x109 (its own ratio, not 16:9) and spilled out
+  the bottom of its container. Pass `fit="cover"` (crop to fill, thumbnails) or `fit="contain"`
+  (letterbox, never crop) whenever the box shape must differ from the source image's own ratio —
+  either one switches the container and `<img>` to the *parent's* real height instead of an
+  auto-derived one, which is the part that actually makes the box fixed.
 
 ## Storybook gotcha specific to these stories
 

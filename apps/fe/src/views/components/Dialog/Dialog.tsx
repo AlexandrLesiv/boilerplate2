@@ -1,8 +1,11 @@
 import type { Component, JSX } from 'solid-js';
-import { createEffect, createSignal, createUniqueId, Show, untrack } from 'solid-js';
+import { createUniqueId, Show } from 'solid-js';
 
+import { useNativeDialog } from '@/common/libs/dialog/useNativeDialog';
+import { reducedMotionDurationMs } from '@/common/libs/flip';
 import { useI18n } from '@/common/libs/i18n';
 
+import { DIALOG_TRANSITION_MS } from './constants';
 import * as styles from './styles.css';
 
 export interface DialogProps {
@@ -16,58 +19,71 @@ export interface DialogProps {
   closeOnBackdropClick?: boolean;
 }
 
+// Resolves once the dialog's own `data-closing` opacity transition (styles.css.ts) finishes, or
+// immediately under reduced motion — same pattern as Lightbox's `waitForBackdropFade`, reusing
+// `reducedMotionDurationMs` since this transition is attribute-driven, not gated by a stylesheet
+// media query of its own. See Dialog/AGENTS.md ("Close animation needs its own data-closing
+// state, like Lightbox").
+const waitForCloseTransition = (dialogEl: HTMLElement): Promise<void> =>
+  new Promise((resolve) => {
+    if (reducedMotionDurationMs(DIALOG_TRANSITION_MS) === 0) {
+      resolve();
+      return;
+    }
+    const onEnd = (event: TransitionEvent) => {
+      if (event.target !== dialogEl || event.propertyName !== 'opacity') return;
+      dialogEl.removeEventListener('transitionend', onEnd);
+      resolve();
+    };
+    dialogEl.addEventListener('transitionend', onEnd);
+  });
+
 // Opened via `.showModal()`, not the `open` attribute — the attribute alone gives a non-modal
-// dialog with no focus trap, no top layer, no `::backdrop`. See Dialog/AGENTS.md.
+// dialog with no focus trap, no top layer, no `::backdrop`. See Dialog/AGENTS.md. The native
+// open/close mechanics live in `useNativeDialog` (common/libs/dialog), shared with Lightbox.
 export const Dialog: Component<DialogProps> = (props) => {
   const { t } = useI18n();
   const titleId = createUniqueId();
-  // `no-unassigned-vars` flags this as always-undefined — false positive, Solid's `ref={ref}` JSX
-  // compiler assigns it on mount, invisible to static analysis.
-  let ref: HTMLDialogElement | undefined;
-  // Distinct from `props.open`: unmounts only once the closing transition finishes, not the instant
-  // `open` goes false (see the close effect below), so content doesn't vanish before the box does.
-  const [mounted, setMounted] = createSignal(untrack(() => props.open));
-
-  createEffect(() => {
-    if (!ref) return;
-    if (props.open) {
-      setMounted(true);
-      // Deferred: `setMounted(true)`'s DOM update hasn't committed synchronously yet at this point
-      // (verified live), so calling `showModal()` here has nothing but the always-rendered close
-      // button to focus, taking focus away from the first real field once content does mount.
-      queueMicrotask(() => {
-        if (ref && !ref.open) ref.showModal();
+  const { setRef, element, mounted, handleNativeClose } = useNativeDialog({
+    open: () => props.open,
+    onClose: () => props.onClose(),
+    runTransition: (mutate) => {
+      if (props.open) return mutate();
+      if (!mounted()) return mutate();
+      const dialogEl = element();
+      if (!dialogEl) return mutate();
+      // Drives the fade/scale-out ourselves and only calls native `close()` — via `mutate` —
+      // once it's actually finished, instead of calling it immediately and hoping the engine
+      // keeps the box rendered for the CSS transition's duration. See Dialog/AGENTS.md.
+      dialogEl.setAttribute('data-closing', 'true');
+      void waitForCloseTransition(dialogEl).then(() => {
+        dialogEl.removeAttribute('data-closing');
+        mutate();
       });
-      return;
-    }
-    if (ref.open) ref.close();
-    // Waits on `ref.getAnimations()`, not `transitionend` — see Dialog/AGENTS.md for why (covers
-    // reduced motion for free, no guessed timeout). No `{ subtree: true }`: only this box's own
-    // transitions should count, not ones bubbling from still-mounted content inside it.
-    void Promise.allSettled(ref.getAnimations().map((animation) => animation.finished)).then(() => {
-      // untrack: one-time read once the promise settles, not a subscription. Guards a stale settle
-      // from an abandoned close arriving after a reopen already re-mounted.
-      if (untrack(() => props.open)) return;
-      setMounted(false);
-    });
+    },
   });
 
-  // The only place `onClose` is called — Escape, the close button, and backdrop clicks all just
-  // call `ref.close()` and let this native event fire, so `open` can't drift out of sync.
-  const handleNativeClose = () => {
-    props.onClose();
+  // `props.onClose()`, not a raw `ref.close()` — calling native `close()` directly would run
+  // immediately, bypassing `runTransition` above entirely. See Dialog/AGENTS.md.
+  const handleBackdropClick = (event: MouseEvent) => {
+    if ((props.closeOnBackdropClick ?? true) && event.target === element()) props.onClose();
   };
 
-  const handleBackdropClick = (event: MouseEvent) => {
-    if ((props.closeOnBackdropClick ?? true) && event.target === ref) ref?.close();
+  // Escape fires native `cancel` before the dialog actually closes, and is cancelable —
+  // preventing it stops the same immediate-native-close bypass described above, routing Escape
+  // through `onClose` too instead of letting the browser close the dialog on its own.
+  const handleCancel = (event: Event) => {
+    event.preventDefault();
+    props.onClose();
   };
 
   return (
     <dialog
-      ref={ref}
+      ref={setRef}
       class={styles.dialog}
       aria-labelledby={titleId}
       onClose={handleNativeClose}
+      onCancel={handleCancel}
       onClick={handleBackdropClick}
     >
       <div class={styles.content}>
@@ -79,7 +95,7 @@ export const Dialog: Component<DialogProps> = (props) => {
       <button
         type="button"
         class={styles.closeButton}
-        onClick={() => ref?.close()}
+        onClick={() => props.onClose()}
         aria-label={t().common.dialog.close}
       >
         <span aria-hidden="true">&times;</span>

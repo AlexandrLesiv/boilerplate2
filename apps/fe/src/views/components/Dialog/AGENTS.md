@@ -1,5 +1,11 @@
 # Dialog
 
+The native `<dialog>` open/close mechanics described below — `showModal()`/`close()`, the
+microtask-deferred focus fix, and the `getAnimations()`-gated unmount — now live in
+`common/libs/dialog/useNativeDialog.ts`, shared with `Lightbox`. This file documents *why* each
+step exists; `Lightbox/AGENTS.md` documents what it adds on top (a manual FLIP grow/shrink
+animation) and does not repeat this.
+
 Native `<dialog>`, opened via `.showModal()`/`.close()`, not a custom `div[role="dialog"]`. This
 repo had zero focus-trap dependency and zero `Portal` usage before this component — going native
 means the browser owns focus containment, top-layer stacking, `::backdrop`, Escape-to-close, and
@@ -63,16 +69,31 @@ the `showModal()` call in `queueMicrotask` lets Solid's update commit first, so 
 native fallback focus (no explicit `autofocus` anywhere) lands on the real first field. Don't
 "simplify" this back to an inline call — the close button silently wins again with no error.
 
-## One notification path for "closed"
+## Every dismissal path calls `props.onClose()` — none of them call `ref.close()` directly
 
-Escape, the close button, and a backdrop click all just call `ref.close()` — none of them call
-`props.onClose()` directly. The dialog's native `close` event is the single place that calls
-`props.onClose()`, so `open` can never drift out of sync with the element by one of those paths
-forgetting to notify the parent. The effect that opens/closes the element in response to `open`
-changing relies on this: closing via the prop (`open` flips to `false` from outside) calls
-`ref.close()`, which fires the same native event, which calls `props.onClose()` again — a harmless
-no-op re-notification, not a bug, and simpler than special-casing "did I close myself or was I asked
-to."
+This inverts an earlier design, documented below for why it had to change. Escape (via `onCancel`,
+intercepted with `preventDefault()`), the close button, and a backdrop click all call
+`props.onClose()`. None of them call the native `ref.close()` themselves — there's no raw `close()`
+handle exposed from `useNativeDialog` for `Dialog` to call anymore (removed; it had exactly one
+caller, and this was it).
+
+**Why this changed.** The previous design had all three call `ref.close()` directly, relying on the
+native `close` event firing `props.onClose()` as the single notification path. That's simpler, but
+it's also an immediate, synchronous native close — there's no way to run a JS-driven closing
+animation *before* it, because by the time any of those three handlers' code runs, the close has
+already happened. That was fine as long as the close animation was pure CSS reacting to `:modal`
+no longer matching. It stopped being fine once the CSS-only close animation turned out to be
+cross-browser-unreliable (see "Close animation needs its own `data-closing` state" below) and had
+to be replaced with a JS-driven one that defers the real `ref.close()` until the animation finishes
+— the same shape `Lightbox` already uses for its own close path, and the same reason
+`Lightbox/AGENTS.md` gives for why *it* doesn't call the raw handle either: calling native `close()`
+directly bypasses whatever JS closing sequence `runTransition` is supposed to run first.
+
+The effect in `useNativeDialog` that reacts to `open` going false still works the same way as
+before — `props.onClose()` flips `open` from the outside (e.g. the story's own `setOpen(false)`),
+the effect notices, and calls `runTransition` with a `mutate` that performs the real `ref.close()`.
+What changed is only that `Dialog.tsx`'s own internal triggers (close button, backdrop, Escape) now
+go through that same path explicitly instead of taking the native-event shortcut.
 
 ## Backdrop click detection
 
@@ -190,6 +211,49 @@ return` inside the `.then()` is the direct replacement for the old timer-cancell
 a stale settle from an abandoned close checks the *current* prop instead of racing to clear a
 timer, so a reopen before it resolves is never undone by it.
 
+## Close animation needs its own `data-closing` state, like Lightbox — `allow-discrete` wasn't enough
+
+The close fade/scale (`opacity`/`transform` on `:modal`, driven purely by `:modal` no longer
+matching once `close()` runs) used to also transition `overlay`/`display` with `allow-discrete`,
+specifically to keep the dialog rendered for the rest of the transition's duration instead of
+disappearing — `dialog:not([open])` is `display: none` in the UA stylesheet, and an engine that
+applies that the instant `close()` runs stops painting everything inside it, mid-transition,
+regardless of what the `opacity`/`transform` transition still has left to do. `allow-discrete` is a
+real platform feature for exactly this, but depending on it to keep the box alive long enough to
+animate closed doesn't hold outside Chrome: reported live snapping straight to fully closed, with
+no visible fade at all, in both Safari and Firefox. `Lightbox` hit the identical bug first (see
+`Lightbox/AGENTS.md`'s "Close depended on `allow-discrete`/`overlay`...") and the fix here is the
+same one, ported over rather than re-derived: drive the close state from a `data-closing` attribute
+set by JS, let `&:modal[data-closing="true"]` (higher specificity than `&:modal` alone, so it wins
+while still modal) apply the closed look, and only call native `close()` — via `mutate`, from
+`runTransition` in `Dialog.tsx` — once that transition has actually finished
+(`waitForCloseTransition`'s `transitionend` listener, or immediately under reduced motion). By the
+time `close()` runs there's nothing left to animate, so it no longer matters whether the engine
+defers `display: none` or applies it instantly, and the `overlay`/`display` `allow-discrete`
+transitions were dropped from `styles.css.ts` entirely — keeping them would misleadingly suggest
+they still do something.
+
+One gap worth knowing about: `::backdrop`'s own `opacity` transition wasn't zeroed under
+`prefers-reduced-motion: reduce` before this — vanilla-extract's `@media` block only zeroes the
+current style call's own top-level `transitionDuration`, not a nested pseudo-element's separate
+`transition` declaration — so under reduced motion `waitForCloseTransition` would resolve
+immediately (treating the duration as `0`) while the backdrop kept fading for the full 150ms
+in the background after unmount. Fixed by giving `::backdrop` its own `transitionDuration: '0s'`
+entry inside the same reduced-motion `@media` block, matching what `Lightbox/styles.css.ts` already
+does for its backdrop.
+
+Verified live via Playwright (Chromium): sampling the dialog's `getComputedStyle().opacity` every
+frame through a close click shows a smooth decay from `1` to `0` over ~150ms, with `open` staying
+`true` and `data-closing="true"` the entire time, only flipping to `open: false` /
+`data-closing: null` once the fade has actually reached `0`. Not independently re-verified against
+real Safari or Firefox from this environment — no Firefox/WebKit-backed MCP tool was connected this
+session (Playwright here defaults to Chromium). The fix is mechanically identical to the one
+already confirmed, by direct user testing, to fix the same symptom in `Lightbox` across all three
+engines — it removes the exact `allow-discrete` dependency that caused it there too — but if a
+close-animation jump is reported again specifically on this component, check first whether
+`data-closing` is actually landing on the right element before assuming the mechanism itself
+regressed.
+
 ## Scrollbar gutter while open — one declarative rule, no JS at all
 
 Background scroll lock is a single global rule (`assets/styles/global.css.ts`):
@@ -245,10 +309,12 @@ convention `CLAUDE.md` already asks for.
 
 Fully stylable — `::backdrop` and `@starting-style` both compile correctly through this repo's
 Vanilla Extract setup (`style({ '::backdrop': {...}, '@starting-style': { selectors: {...} } })`),
-verified against the actual compiled CSS output, not assumed from the package's docs. Animation
-uses `transition` + `@starting-style` + `allow-discrete` on `opacity`/`transform`/`overlay`/
-`display` so the dialog doesn't snap in/out abruptly, and is disabled under
-`prefers-reduced-motion: reduce`, matching the pattern already established in `TimedLoader`.
+verified against the actual compiled CSS output, not assumed from the package's docs. The open
+animation uses plain `transition` + `@starting-style` on `opacity`/`transform` so the dialog
+doesn't snap in abruptly; the close animation adds a `data-closing`-attribute state on top (see
+above) rather than leaning on `allow-discrete`, which turned out not to be reliable enough across
+engines to use for closing. Both directions are disabled under `prefers-reduced-motion: reduce`,
+matching the pattern already established in `TimedLoader`.
 
 ## What this doesn't handle
 

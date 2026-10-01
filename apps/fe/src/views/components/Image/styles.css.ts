@@ -23,6 +23,27 @@ export const imageElHidden = style({
   visibility: 'hidden',
 });
 
+// `fit="cover" | "contain"` pair: the base rules above size the box by the image's own aspect
+// ratio (`height: auto`) — right for a plain responsive image, but wrong whenever a caller wants
+// to force a *different* box shape (a 16:9 thumbnail crop, or a viewer that fills its container).
+// Without this, `object-fit` never got a mismatched box to act on at all: the `<img>` rendered at
+// its own natural ratio and silently overflowed the parent instead of being cropped/letterboxed.
+// `imageElFill` makes both container and `<img>` take the *parent's* real height, not an
+// auto-derived one; `imageElContain` then only needs to flip the final `object-fit` value.
+// Declared after the base rules so equal-specificity `classList` combination resolves in this
+// file's declaration order.
+export const imageContainerFill = style({
+  height: '100%',
+});
+
+export const imageElFill = style({
+  height: '100%',
+});
+
+export const imageElContain = style({
+  objectFit: 'contain',
+});
+
 export const fallback = style({
   position: 'absolute',
   inset: 0,
