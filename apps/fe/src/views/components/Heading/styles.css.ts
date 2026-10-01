@@ -1,0 +1,24 @@
+import { style, styleVariants } from '@vanilla-extract/css';
+
+import { themeVars } from '@/assets/styles/themes.css';
+
+// `rem`, not a fixed `px` scale — every size below shrinks along with the rest of the page's text
+// when `themeVars.typography.fontSizeNormal` narrows below the `sm` breakpoint (themes.css.ts),
+// instead of competing with that mechanism with its own, separate responsive rule.
+export const base = style({
+  color: themeVars.color.text,
+  fontWeight: 700,
+  lineHeight: 1.2,
+  // Long unbroken content (article titles, URLs) wraps instead of overflowing its container —
+  // the same rule `views/pages/news/styles.css.ts`'s `titleLink` already uses.
+  overflowWrap: 'break-word',
+  wordBreak: 'break-word',
+});
+
+export const sizes = styleVariants({
+  xl: { fontSize: '2rem' },
+  lg: { fontSize: '1.5rem' },
+  md: { fontSize: '1.25rem' },
+  sm: { fontSize: '1.125rem' },
+  xs: { fontSize: '1rem' },
+});

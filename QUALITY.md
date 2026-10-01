@@ -68,3 +68,6 @@ Writinig a new feature: Functional Edge Cases -> UX Design -> Opquast Compliance
 
 ### Animation
 - https://animations.dev/learn
+
+### Web Hints
+- https://webhint.io

@@ -5,9 +5,11 @@ import { Title } from '@solidjs/meta';
 import { A, createAsync, revalidate, useParams } from '@solidjs/router';
 
 import { format, useI18n } from '@/common/libs/i18n';
+import { Heading } from '@/views/components/Heading/Heading';
 import { Image } from '@/views/components/Image/Image';
 import { Lightbox } from '@/views/components/Lightbox/Lightbox';
 import type { LightboxItem } from '@/views/components/Lightbox/Lightbox';
+import { Text } from '@/views/components/Text/Text';
 import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
 
 import { getArticle } from '../api';
@@ -43,15 +45,20 @@ const ArticlePage: Component = () => {
           caption: a().title,
         }));
         return (
-          <div>
+          <div class={styles.container}>
             <Title>{a().title}</Title>
-            <h1>
+            <Heading as="h1">
               <Show when={a().url} fallback={a().title}>
                 <a href={a().url} target="_blank" rel="noopener noreferrer">
                   {a().title}
                 </a>
               </Show>
-            </h1>
+            </Heading>
+            {/* `content` is placeholder copy the API attaches server-side (StoryEntity.content) —
+            real Hacker News items have no article body at all, so this is `Optional`. */}
+            <div class={styles.body}>
+              <For each={a().content ?? []}>{(paragraph) => <Text as="p">{paragraph}</Text>}</For>
+            </div>
             <div class={styles.coverGallery}>
               <For each={coverItems}>
                 {(item, index) => (

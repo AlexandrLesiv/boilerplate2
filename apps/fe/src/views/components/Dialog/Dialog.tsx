@@ -4,6 +4,7 @@ import { createUniqueId, Show } from 'solid-js';
 import { runAnimatedClose } from '@/common/libs/dialog/animatedClose';
 import { useNativeDialog } from '@/common/libs/dialog/useNativeDialog';
 import { useI18n } from '@/common/libs/i18n';
+import { Heading } from '@/views/components/Heading/Heading';
 
 import { DIALOG_TRANSITION_MS } from './constants';
 import * as styles from './styles.css';
@@ -58,9 +59,12 @@ export const Dialog: Component<DialogProps> = (props) => {
       onClick={handleBackdropClick}
     >
       <div class={styles.content}>
-        <h2 id={titleId} class={styles.title}>
+        {/* `size="md"` keeps this dialog's existing visual size (1.25rem) — `as="h2"` alone would
+        default to `Heading`'s own `lg` (1.5rem), which is a deliberate, independent choice `size`
+        exists to override, not a mismatch to "fix". See Heading/AGENTS.md. */}
+        <Heading as="h2" size="md" id={titleId} class={styles.title}>
           {props.title}
-        </h2>
+        </Heading>
         <Show when={mounted()}>{props.children()}</Show>
       </div>
       <button

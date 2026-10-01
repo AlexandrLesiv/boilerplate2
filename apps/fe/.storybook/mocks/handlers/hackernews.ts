@@ -24,7 +24,11 @@ export const topStoriesHandler = http.get(`*${topStoriesRoute.url}`, ({ request 
 export const articleHandler = http.get(`*${articleRoute.url}`, ({ params }) => {
   const story = hackernewsStories.find((candidate) => candidate.id === Number(params.id));
   if (!story) return HttpResponse.json({ message: 'Article not found' }, { status: 404 });
-  return HttpResponse.json(ok(story));
+  // Matches the real API's shape: `content` only ever appears on the single-article response,
+  // never on the list — generated fresh per request rather than stored on `hackernewsStories`,
+  // since nothing about the list view reads it.
+  const content = Array.from({ length: 8 }, () => faker.lorem.paragraph());
+  return HttpResponse.json(ok({ ...story, content }));
 });
 
 export const hackernewsHandlers = [topStoriesHandler, articleHandler];

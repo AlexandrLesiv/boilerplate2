@@ -29,6 +29,9 @@ const baseArticle = (id: number): Article => ({
   score: faker.number.int({ min: 1, max: 500 }),
   descendants: faker.number.int({ min: 0, max: 200 }),
   time: Math.floor(faker.date.recent({ days: 7 }).getTime() / 1000),
+  // Matches the real API: only the single-article response carries this, generated fresh here
+  // rather than hardcoded, same as `.storybook/mocks/handlers/hackernews.ts`'s own articleHandler.
+  content: Array.from({ length: 8 }, () => faker.lorem.paragraph()),
 });
 
 const ok = (data: Article) => HttpResponse.json({ data });

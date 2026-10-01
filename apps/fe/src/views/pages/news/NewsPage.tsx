@@ -4,6 +4,8 @@ import { For } from 'solid-js';
 import { A, createAsync, revalidate } from '@solidjs/router';
 
 import { format, useI18n } from '@/common/libs/i18n';
+import { Heading } from '@/views/components/Heading/Heading';
+import { Text } from '@/views/components/Text/Text';
 import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
 
 import { getTopStories } from './api';
@@ -17,7 +19,7 @@ const NewsPage: Component = () => {
 
   return (
     <div>
-      <h1>{t().pages.news.title}</h1>
+      <Heading as="h1">{t().pages.news.title}</Heading>
       <DataBoundary
         result={response()}
         // pending={<p>{t().pages.news.loading}</p>}
@@ -28,7 +30,9 @@ const NewsPage: Component = () => {
             <For each={page().data}>
               {(story, i) => (
                 <li class={styles.item}>
-                  <span class={styles.rank}>{i() + 1}.</span>
+                  <Text as="span" variant="secondary" size="small" class={styles.rank}>
+                    {i() + 1}.
+                  </Text>
                   <div class={styles.body}>
                     <A class={styles.titleLink} href={String(story.id)}>
                       {story.title}

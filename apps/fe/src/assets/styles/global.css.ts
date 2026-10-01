@@ -42,6 +42,12 @@ globalStyle('html', {
   // Inherited from here rather than set per element, same reasoning as the box-sizing reset below:
   // nothing in this app's custom-styled buttons/links wants the browser's default tap feedback.
   WebkitTapHighlightColor: 'transparent',
+  // Grayscale antialiasing instead of macOS's default subpixel rendering — renders text visibly
+  // thinner and crisper on that platform specifically (a no-op on Windows/Linux/mobile, which
+  // don't do subpixel AA the same way). App-wide here rather than only on `Text`, since every
+  // piece of text on the page — headings, buttons, links — benefits identically; scoping it to
+  // one component would leave the rest inconsistent for no reason.
+  WebkitFontSmoothing: 'antialiased',
 });
 
 // Background scroll lock for any open native `<dialog>`, not just this app's own `Dialog`

@@ -27,6 +27,15 @@ export const themeVars = createThemeContract({
 export const FONT_SIZE_NARROW = '12px';
 export const FONT_SIZE_NORMAL = '16px';
 
+// The classic typographic "measure" — 45-75 characters per line is the generally agreed-on
+// comfortable range for continuous prose (Bringhurst's *Elements of Typographic Style*; the same
+// range most web-typography guides converge on), with ~65 as the commonly-cited sweet spot. `ch`
+// tracks this directly regardless of font-size, unlike a fixed `px`/`rem` width, which only
+// happens to match a given character count at one specific font-size. Applied at a page's own
+// content container — never as a `Text`/`Heading` default, since plenty of real text (labels,
+// captions, table cells) has no business being capped at prose width. See `Text/AGENTS.md`.
+export const READABLE_MEASURE = '65ch';
+
 const typographyValues = { fontSizeNormal: FONT_SIZE_NORMAL };
 
 export const generalTheme = style({

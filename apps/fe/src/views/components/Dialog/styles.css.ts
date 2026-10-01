@@ -120,9 +120,9 @@ export const content = style({
   },
 });
 
+// `fontSize` no longer lives here — `Heading`'s own `size="md"` (Dialog.tsx) sets it now.
 export const title = style({
   marginBottom: '1rem',
-  fontSize: '1.25rem',
 });
 
 export const closeButton = style({

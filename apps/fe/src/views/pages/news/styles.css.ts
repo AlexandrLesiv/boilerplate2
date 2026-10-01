@@ -18,12 +18,12 @@ export const item = style({
   alignItems: 'start',
 });
 
+// Color/font-size come from `Text` at the call site now, not from this class — this only holds
+// the layout-specific bits `Text` has no opinion on.
 export const rank = style({
-  color: themeVars.color.textSecondary,
   fontVariantNumeric: 'tabular-nums',
   textAlign: 'right',
   paddingTop: '0.125rem',
-  fontSize: '0.875rem',
 });
 
 export const body = style({

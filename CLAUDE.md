@@ -140,6 +140,11 @@ components based on app state, `containers/`.
     custom property imperatively (`el.style.setProperty('--foo', value)`) and reference `var(--foo)`
     in the stylesheet. See `Lightbox.tsx`'s `--lightbox-ratio` for this pattern in practice.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
+- **Pages with continuous prose constrain their line length** — `maxWidth: READABLE_MEASURE`
+  (`assets/styles/themes.css.ts`, `65ch`) on the page's own outer container, never on
+  `Text`/`Heading` themselves. See `Text/AGENTS.md`'s "Guideline: constrain the *measure*" section
+  for where exactly it goes and why, and `ArticlePage/styles.css.ts`'s `container` class for the
+  reference implementation.
 
 ## Node APIs
 
