@@ -32,17 +32,27 @@ const serverLogger: Logger = {
 
 let flushIntervalMs = 10_000;
 let flushBufferSize = 100;
-let sessionId: string | null = null;
+// Resolved once, in `createLogger`, not lazily re-derived on every `push` call — a session id is
+// a property of this page load, not something to reach into global storage for on each log entry.
+// One id per page load, not persisted: a reload starts a new session rather than continuing the
+// previous one.
+let sessionId = '';
 
 const buffer: Omit<LogEntry, 'id'>[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-const getSessionId = (): string => {
-  if (!sessionId) {
-    sessionId = sessionStorage.getItem('log:session') ?? crypto.randomUUID();
-    sessionStorage.setItem('log:session', sessionId);
-  }
-  return sessionId;
+// `crypto.randomUUID()` is gated to secure contexts (HTTPS or `localhost`) — loading the dev
+// server from a phone over plain `http://<lan-ip>` isn't one, so `randomUUID` doesn't exist there
+// and calling it threw, crashing app bootstrap entirely. Confirmed live, identically in iOS Safari
+// and Android Chrome — a spec restriction, not an engine bug. `crypto.getRandomValues()` has no
+// such restriction, so this builds an RFC 4122 v4 UUID from it by hand when `randomUUID` is absent.
+const randomUUID = (): string => {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
 const flush = async (): Promise<void> => {
@@ -87,7 +97,7 @@ const push = (level: LogLevel, category: LogCategory, message: string, data?: Re
     }
   }
 
-  buffer.push({ level, category, message, data, timestamp, sessionId: getSessionId(), url: location.href });
+  buffer.push({ level, category, message, data, timestamp, sessionId, url: location.href });
   if (buffer.length >= flushBufferSize) void flush();
   else scheduleFlush();
 };
@@ -129,6 +139,7 @@ export const createLogger = (config: LoggerConfig = {}): Logger => {
 
   if (!clientInitialized) {
     clientInitialized = true;
+    sessionId = randomUUID();
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') void flush();

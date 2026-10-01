@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
+    "setup:https": "bash scripts/setup-https.sh",
     "build": "vp build",
     "analyze": "ANALYZE=true vp build",
     "preview": "vp preview",

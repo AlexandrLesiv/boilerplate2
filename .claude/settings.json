@@ -1,6 +1,6 @@
 {
   "permissions": {
     "allow": ["Bash(git mv *)"],
-    "deny": ["Bash(git *)", "Read(.env*)", "Read(**/.env*)", "Bash(vp dev *)", "Bash(pnpm dev *)"]
+    "deny": ["Bash(git *)", "Read(.env*)", "Read(**/.env*)", "Read(*.pem)", "Read(**/*.pem)", "Bash(vp dev *)", "Bash(pnpm dev *)"]
   }
 }

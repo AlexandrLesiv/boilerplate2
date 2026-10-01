@@ -1,1 +1,1 @@
-vp staged && pnpm -r typecheck
+vp staged && pnpm -r typecheck && (cd apps/fe && vp build)

@@ -57,7 +57,10 @@ export const buildRouteUrl = (
   querystring?: Record<string, unknown>
 ): string => {
   const path = params ? url.replace(/:([^/]+)/g, (_, key: string) => encodeURIComponent(toUrlValue(params[key]))) : url;
-  const full = new URL(`${apiBaseUrl}${path}`);
+  // `apiBaseUrl` is relative (`/api`) in dev client code — resolving a relative URL with the
+  // single-argument form throws, so the current origin is passed as the base explicitly. SSR and
+  // production client both use an absolute `apiBaseUrl` already, which ignores the base entirely.
+  const full = new URL(`${apiBaseUrl}${path}`, typeof window !== 'undefined' ? window.location.origin : undefined);
   if (querystring) {
     for (const [key, value] of Object.entries(querystring)) {
       if (value !== undefined && value !== null) full.searchParams.set(key, toUrlValue(value));
