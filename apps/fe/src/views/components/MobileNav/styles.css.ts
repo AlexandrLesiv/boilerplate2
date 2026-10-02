@@ -3,6 +3,7 @@ import { style } from '@vanilla-extract/css';
 import { belowBreakpoint } from '@/assets/styles/responsive/breakpoints';
 import * as safeArea from '@/assets/styles/safe-area.css';
 import { themeVars } from '@/assets/styles/themes.css';
+import { zIndex } from '@/assets/styles/zIndex';
 
 const mobileBreakpoint = belowBreakpoint('sm');
 
@@ -69,7 +70,7 @@ export const nav = style({
       backgroundColor: themeVars.color.surface,
       borderBottom: `1px solid ${themeVars.color.border}`,
       boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-      zIndex: 20,
+      zIndex: zIndex.mobileNavPanel,
       // Higher specificity than the bare `.nav` rule above (attribute selector added), both
       // inside the same media query — same technique `Dialog`'s `[data-closing]` override uses,
       // so this wins regardless of source order. See Dialog/AGENTS.md.

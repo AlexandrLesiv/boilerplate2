@@ -1,6 +1,7 @@
 import { style } from '@vanilla-extract/css';
 
 import { themeVars } from '@/assets/styles/themes.css';
+import { zIndex } from '@/assets/styles/zIndex';
 
 // Off-screen via position, not visibility/display — either would drop every link inside from
 // the tab order. `:focus-within` (not `:focus`) keeps the whole cluster visible while tabbing
@@ -9,7 +10,7 @@ export const container = style({
   position: 'fixed',
   top: '-3rem',
   left: '0.5rem',
-  zIndex: 100,
+  zIndex: zIndex.skipLinks,
   display: 'flex',
   gap: '0.5rem',
   transition: 'top 150ms ease',

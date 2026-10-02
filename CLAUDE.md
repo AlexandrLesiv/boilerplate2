@@ -140,6 +140,12 @@ components based on app state, `containers/`.
     custom property imperatively (`el.style.setProperty('--foo', value)`) and reference `var(--foo)`
     in the stylesheet. See `Lightbox.tsx`'s `--lightbox-ratio` for this pattern in practice.
 - **i18n**: all user-visible strings go through `useI18n()` → `t()`. No hardcoded strings in components.
+- **`zIndex`** (`assets/styles/zIndex.ts`): the single source of truth for every explicit
+  `z-index` in the app shell, in ascending stacking order. Adding a new fixed/absolutely
+  positioned element that needs to stack above or below something else means adding an entry
+  there, not a bare number in that component's own `styles.css.ts` — the file's own ordering is
+  what documents "what's above what" without re-deriving it per component. `Dialog`/`Lightbox`
+  are deliberately absent: native `<dialog>`'s top layer always wins regardless of any value here.
 - **Pages with continuous prose constrain their line length** — `maxWidth: READABLE_MEASURE`
   (`assets/styles/themes.css.ts`, `65ch`) on the page's own outer container, never on
   `Text`/`Heading` themselves. See `Text/AGENTS.md`'s "Guideline: constrain the *measure*" section

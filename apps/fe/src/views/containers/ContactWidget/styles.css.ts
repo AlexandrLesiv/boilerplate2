@@ -3,6 +3,7 @@ import { keyframes, style } from '@vanilla-extract/css';
 import { belowBreakpoint } from '@/assets/styles/responsive/breakpoints';
 import * as safeArea from '@/assets/styles/safe-area.css';
 import { FONT_SIZE_NORMAL, themeVars } from '@/assets/styles/themes.css';
+import { zIndex } from '@/assets/styles/zIndex';
 
 import { CONTACT_WIDGET_CONTENT_TRANSITION_MS, CONTACT_WIDGET_TRANSITION_MS } from './constants';
 
@@ -30,7 +31,7 @@ export const trigger = style({
   position: 'fixed',
   bottom: `calc(1.5rem + ${safeArea.safeAreaBottom})`,
   right: `calc(1.5rem + ${safeArea.safeAreaRight})`,
-  zIndex: 10,
+  zIndex: zIndex.contactWidgetTrigger,
   overflow: 'hidden',
   // Equal padding on every side, overriding the shared `boxed` look's asymmetric
   // `0.5rem 1rem` (sized for a text label) — icon-only, so this plus the rounded-square
@@ -108,7 +109,7 @@ export const panelContent = style({
   position: 'fixed',
   bottom: `calc(1.5rem + ${safeArea.safeAreaBottom})`,
   right: `calc(1.5rem + ${safeArea.safeAreaRight})`,
-  zIndex: 11,
+  zIndex: zIndex.contactWidgetPanel,
   width: '380px',
   maxWidth: 'calc(100vw - 2rem)',
   maxHeight: 'calc(100vh - 2rem)',
