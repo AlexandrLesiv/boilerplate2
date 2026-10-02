@@ -336,6 +336,55 @@ above) rather than leaning on `allow-discrete`, which turned out not to be relia
 engines to use for closing. Both directions are disabled under `prefers-reduced-motion: reduce`,
 matching the pattern already established in `TimedLoader`.
 
+## Anchoring the open/close pivot to a trigger element
+
+`getAnchorElement` (optional) points the scale transition's `transform-origin` at a trigger
+element instead of the dialog's own center, so the card visibly grows from/shrinks toward the
+button that opened it (`LoginDialog` is the one real consumer). Two rejected designs, and why:
+
+- **A full geometric FLIP, matching `Lightbox`'s `flipFrom`/`flipTo`.** Rejected because those
+  helpers drive `element.style.transition` imperatively (see `common/libs/flip/index.ts`), which
+  clobbers the inline `transition` *shorthand* — and `Dialog`'s own declarative `opacity`
+  transition lives on the exact same `<dialog>` element, not a separate inner content box the way
+  `Lightbox`'s outer `<dialog>`/inner `contentInner` split keeps them apart. Giving `Dialog` that
+  same inner/outer split just to reuse `flipFrom`/`flipTo` is a bigger restructuring than this
+  affordance is worth, especially since the trigger button and the login card have wildly
+  different aspect ratios anyway — FLIP would arrive correctly scaled (uniformly, see `flip.ts`'s
+  own `invert()`, so no stretching risk) but the button-sized starting box bears no visual
+  resemblance to the card regardless.
+- **Measuring the dialog's own rect to compute the pivot.** The native `<dialog>` is
+  `display: none` (so a zero-size rect) until `showModal()` has run, and there's no reliable
+  measurement point before the opening transition needs the correct pivot already in place. Used
+  the viewport's own center instead — correct on desktop because the card is genuinely centered
+  in the viewport (see "Centering" above), confirmed, not assumed, so there's no rect to race.
+
+**The pivot math.** `transform-origin` only needs the *offset* from the box's own center, which is
+resolution-independent via CSS percentages: `calc(50% + <px>px)` is always "the box's center plus
+N px" regardless of the box's actual size, so no rect measurement of the dialog itself is needed —
+only the anchor's `getBoundingClientRect()` and `window.innerWidth/innerHeight`. With the pivot at
+offset `V` from center and the dialog scaled by `s`, the apparent on-screen center during the
+transition is `center + V * (1 - s)` — at `s` close to `1` (a typical subtle modal pop, the
+previous `0.96`) that shift is imperceptible regardless of where the pivot sits, which is why
+`closedScale` (`styles.css.ts`) had to drop to `0.15`, not just gain a shifted origin: at `0.15`
+the apparent start is 85% of the way to the trigger, *and* the box itself starts small enough to
+plausibly be mistaken for the trigger's own footprint. Verified live via a throwaway Playwright
+probe (not assumed): at 1280px width, `getComputedStyle(dialogEl)` reports
+`--dialog-origin-x: calc(50% + -578px)` for a trigger positioned top-left — not the unset
+fallback — confirming the mechanism actually engages, not just that the dialog still opens.
+
+**Skipped below `sm` on purpose.** The mobile full-screen takeover isn't viewport-centered the same
+way desktop is (see "Mobile: full-screen takeover" below), so the offset math doesn't hold there,
+and a full-bleed sheet doesn't need a button-anchor cue anyway. `Dialog.tsx`'s `applyAnchorOrigin`
+checks `window.innerWidth` against the same `sm` breakpoint and removes the custom properties
+(falling back to the default center pivot) rather than setting a wrong one.
+
+**Gap:** the Storybook test-runner environment's own browser window is pinned at 414px CSS width
+regardless of the story's `viewport` global (that addon only resizes the preview iframe's visual
+box, not the real `window.innerWidth` the component reads) — so `Dialog.stories.tsx`'s
+`OpenedFromTrigger` and `LoginDialog.stories.tsx`'s `OpensAnchoredToTrigger` can only exercise the
+mobile-skip branch inside that tool, and assert accordingly. The anchor-engaged branch is verified
+by the Playwright probe above, not by anything that runs as part of `pnpm check` or the story suite.
+
 ## What this doesn't handle
 
 - **Nested dialogs.** Opening a second `Dialog` from inside one that's already open is untested —

@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js';
-import { createEffect, createMemo, createSignal, createUniqueId, Show, untrack } from 'solid-js';
+import { createEffect, createMemo, createSignal, createUniqueId, onCleanup, Show, untrack } from 'solid-js';
 
 import { runAnimatedClose } from '@/common/libs/dialog/animatedClose';
 import { useNativeDialog } from '@/common/libs/dialog/useNativeDialog';
@@ -49,6 +49,18 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
     contentRef?.style.setProperty('--lightbox-ratio', String(rect.width / rect.height));
   };
 
+  // `window.innerWidth`/`innerHeight`, not CSS `100%`/`100vw` — `scrollbar-gutter: stable` on
+  // `html` (global.css.ts) shrinks what those units resolve against for this `position: fixed`
+  // dialog, which threw off both its own fill and the open/close FLIP math built on top of it
+  // (styles.css.ts's `--lightbox-vw`/`-vh`). `window.innerWidth` is unaffected (confirmed live) and
+  // writing it only onto this element touches no shared/global state, so — unlike an earlier,
+  // reverted attempt that toggled `scrollbar-gutter` itself — nothing on the page reflows and the
+  // trigger rect captured alongside it (below) stays accurate.
+  const setViewportVars = (el: HTMLElement) => {
+    el.style.setProperty('--lightbox-vw', `${window.innerWidth}px`);
+    el.style.setProperty('--lightbox-vh', `${window.innerHeight}px`);
+  };
+
   // Memoized, not a plain derived function: `useNativeDialog`'s effect must only react to the
   // open/closed *boundary*, not every index change while already open — a raw `() => activeIndex
   // !== null` would re-track `activeIndex` itself and re-fire showModal/VT-morph logic on every
@@ -96,7 +108,10 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
         const targetIndex = props.activeIndex;
         if (targetIndex === null) return mutate();
         logger.event('lightbox.open', { index: targetIndex, total: total() });
-        const triggerRect = props.getTriggerElement?.(props.items[targetIndex].id)?.getBoundingClientRect();
+        const targetId = props.items[targetIndex].id;
+        const triggerRect = props.getTriggerElement?.(targetId)?.getBoundingClientRect();
+        const dialogEl = element();
+        if (dialogEl) setViewportVars(dialogEl);
         setLastIndex(targetIndex);
         mutate();
         if (triggerRect) {
@@ -111,8 +126,16 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
           // current frame — a strictly stronger guarantee than any microtask ordering.
           requestAnimationFrame(() => {
             if (!contentRef) return;
-            setContentRatio(triggerRect);
-            void flipFrom(contentRef, triggerRect, { durationMs: LIGHTBOX_TRANSITION_MS });
+            // Re-measured here, not the `triggerRect` captured above — reported live as a small
+            // but real leftover offset, reproducible only when the trigger started partially
+            // outside the viewport: a newly-`:focus`ed partially-visible element can get
+            // scrolled (fully) into view by the browser's own default focus handling, between
+            // the pre-`mutate()` capture above and this frame. Re-reading right before the FLIP
+            // math runs keeps it correct regardless of whether that happened, the same
+            // staleness-avoidance principle as `setViewportVars`.
+            const freshTriggerRect = props.getTriggerElement?.(targetId)?.getBoundingClientRect() ?? triggerRect;
+            setContentRatio(freshTriggerRect);
+            void flipFrom(contentRef, freshTriggerRect, { durationMs: LIGHTBOX_TRANSITION_MS });
           });
         }
         return;
@@ -142,6 +165,18 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
       }
       runAnimatedClose(dialogEl, LIGHTBOX_TRANSITION_MS, mutate, extra);
     },
+  });
+
+  // Keeps `--lightbox-vw`/`-vh` live across a resize/orientation-change *while already open* —
+  // the open-path write above only covers the moment of opening. Scoped to `isOpen()`, not the
+  // component's whole lifetime, so nothing listens while closed.
+  createEffect(() => {
+    if (!isOpen()) return;
+    const dialogEl = element();
+    if (!dialogEl) return;
+    const handleResize = () => setViewportVars(dialogEl);
+    window.addEventListener('resize', handleResize);
+    onCleanup(() => window.removeEventListener('resize', handleResize));
   });
 
   const goTo = (index: number) => {

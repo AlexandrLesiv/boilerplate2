@@ -98,7 +98,14 @@ export const ServerError503: Story = {
   },
 };
 
-/** First request fails, second succeeds — exercises the DataBoundary "Try again" action. */
+/**
+ * First request fails, second succeeds — exercises the DataBoundary "Try again" action. The
+ * success story's title is fixed (not `story()`'s random one) so `play` can assert on it directly
+ * — `findByRole('list')` alone is now ambiguous, since `Breadcrumbs` renders its own `<ol>` above
+ * `DataBoundary` unconditionally, including through the error state.
+ */
+const retrySuccessStory = story({ title: 'Retry succeeded story' });
+
 export const RetrySucceeds: Story = {
   parameters: {
     msw: {
@@ -109,7 +116,7 @@ export const RetrySucceeds: Story = {
             attempt += 1;
             return attempt === 1
               ? HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 })
-              : ok([story()]);
+              : ok([retrySuccessStory]);
           });
         })(),
       ],
@@ -118,7 +125,7 @@ export const RetrySucceeds: Story = {
   play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByText('503')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Try again' }));
-    await expect(await canvas.findByRole('list')).toBeInTheDocument();
+    await expect(await canvas.findByText(retrySuccessStory.title)).toBeInTheDocument();
   },
 };
 

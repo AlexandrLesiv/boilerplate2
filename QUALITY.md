@@ -12,6 +12,7 @@ Requirements:
 - BE Performance
 - Accessibility
 - Safe triangles
+- High Contrast
 - All charts should have textual representation
 - Semantic tags
 - tap highlight handling

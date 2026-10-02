@@ -56,3 +56,38 @@ If a future color change touches `primary`/`primaryHover`/`linkText` again: re-v
 contrast pairs this section found (text-on-surface for `linkText`, white-on-background for
 `primary`, and the background-vs-surface visual-distinction check for dark mode specifically) —
 don't assume a value that passes one of them passes the others.
+
+## `external` is explicit, not inferred from `href`/`target`
+
+Same reasoning as `variant`: a fact the caller already knows when authoring the link shouldn't be
+guessed back out of the URL. Sniffing `href` for "external" is also unreliable in practice — it
+needs the app's own origin to compare against (not configured anywhere in this repo), and still
+mishandles protocol-relative URLs, `mailto:`/`tel:`, and subdomains. `target="_blank"` isn't a
+substitute either — per the [BBC GEL external-links pattern](https://bbc.github.io/gel/components/external-links/)
+this is modeled on, the icon is about *leaving the site*, not about tab behavior, so the two are
+independent: `external` doesn't set `target`/`rel` for you, and `target="_blank"` alone doesn't
+show the icon. Both `NewsPage`'s HN comments link and `ArticlePage`'s outbound story-title link
+set `external` and `target`/`rel` side by side.
+
+**Accessible name, not a tooltip.** GEL's own markup leads with hidden text ("leave BBC site:
+Example Link"); this app has no "leaving the site" framing that would make sense generically, so
+the hidden text instead follows the link text ("Example Link Opens in new tab") — the more common
+phrasing for "this link behaves differently" (WebAIM, GOV.UK). It's a real `<span>` in the
+accessible-name computation (`assets/styles/visually-hidden.css.ts`'s clip-based hiding, not
+`display`/`visibility`, which would drop it from the a11y tree too), not an `aria-label` override
+on the `<a>` — overriding the name entirely would silently swallow whatever the caller actually
+passed as `children`.
+
+**Why a leading nbsp instead of GEL's literal "wrap the last word" DOM surgery.** GEL's own
+implementation re-wraps the final word of the link text in a `nowrap` span together with the icon.
+`Link`'s `children` is arbitrary JSX, not a string this component can tokenize into words. A
+leading `' '` inside the same `nowrap` span as the icon (`styles.css.ts`'s `iconWrap`)
+achieves the same "icon can't orphan onto its own line" result without needing to parse
+`children`: nbsp is a non-breaking character, so the browser cannot wrap the line between the
+preceding visible character and it, and `nowrap` stops it from wrapping between the nbsp and the
+icon either — the two travel as one unit with whatever text precedes them.
+
+**The icon is decorative; the hidden span carries the meaning.** The whole icon-plus-nbsp `<span>`
+is `aria-hidden="true"` (not just the `<svg>`) — a bare nbsp text node left out of that would still
+get announced as blank space by some screen readers, and the `<svg>` has nothing to add once the
+hidden span already states "Opens in new tab" in words.

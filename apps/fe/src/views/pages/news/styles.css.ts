@@ -2,6 +2,12 @@ import { style } from '@vanilla-extract/css';
 
 import { themeVars } from '@/assets/styles/themes.css';
 
+// `Breadcrumbs` carries no margin of its own (see Breadcrumbs/AGENTS.md) — spacing between it and
+// the heading is this page's call, same as `Text`'s own "no margin" convention.
+export const breadcrumbs = style({
+  marginBottom: '1rem',
+});
+
 export const list = style({
   listStyle: 'none',
   margin: 0,

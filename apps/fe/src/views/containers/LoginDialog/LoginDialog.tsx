@@ -21,16 +21,29 @@ export const LoginDialog: Component = () => {
   const { t } = useI18n();
   const logger = useLogger();
   const [open, setOpen] = createSignal(false);
+  // Plain mutable ref, not a signal — the button is never re-created while mounted, so there's
+  // nothing reactive to track; `Dialog` only reads this once per open/close via the accessor.
+  let triggerRef: HTMLButtonElement | undefined;
 
   return (
     <Show
       when={state.user}
       fallback={
         <>
-          <AppButton variant="ghost" class={styles.authTrigger} onClick={() => setOpen(true)}>
+          <AppButton
+            variant="ghost"
+            class={styles.authTrigger}
+            ref={(el) => (triggerRef = el)}
+            onClick={() => setOpen(true)}
+          >
             {t().nav.login}
           </AppButton>
-          <Dialog open={open()} onClose={() => setOpen(false)} title={t().pages.login.title}>
+          <Dialog
+            open={open()}
+            onClose={() => setOpen(false)}
+            title={t().pages.login.title}
+            getAnchorElement={() => triggerRef}
+          >
             {() => <LoginForm onSuccess={() => setOpen(false)} />}
           </Dialog>
         </>

@@ -20,8 +20,19 @@ export const dialog = style({
   position: 'fixed',
   inset: 0,
   margin: 0,
-  width: '100%',
-  height: '100%',
+  // `var(--lightbox-vw/-vh, 100%)`, not a plain `100%` — `scrollbar-gutter: stable` on `html`
+  // (global.css.ts) reserves phantom scrollbar space that shrinks what `%` (and `vw`) resolve
+  // against for any `position: fixed` box, which threw off both this box's own fill and the
+  // open/close FLIP math (common/libs/flip) built on top of it. Toggling `scrollbar-gutter`
+  // itself while open (a since-reverted attempt) traded that for something worse: the toggle is
+  // itself a reflow of `html`'s content box, which shifts the trigger thumbnail's real on-screen
+  // position *after* Lightbox.tsx has already captured it for the FLIP's "from" rect — a visible
+  // jank plus a still-wrong animation start. `window.innerWidth`/`innerHeight` are unaffected by
+  // `scrollbar-gutter` (confirmed live) and never touch any shared global state, so Lightbox.tsx
+  // sets these once per open/resize instead — nothing on the page reflows, and the trigger rect
+  // stays accurate. `100%` fallback covers the instant before JS has set them.
+  width: 'var(--lightbox-vw, 100%)',
+  height: 'var(--lightbox-vh, 100%)',
   maxWidth: 'none',
   maxHeight: 'none',
   border: 'none',
@@ -89,6 +100,19 @@ export const dialog = style({
 export const content = style({
   position: 'absolute',
   inset: 0,
+  // Explicit size from the same `--lightbox-vw`/`-vh` custom properties `.dialog` sets (inherited
+  // down, not re-measured here) — not left to `inset: 0`'s stretch-to-parent algorithm. Reported
+  // live at `devicePixelRatio: 2`: `.dialog` filled its full JS-measured size correctly, but this
+  // element — `inset: 0` plus `container-type: size`, both on the same box — came up ~15px short
+  // on width only, even though its parent (`.dialog`) was already exactly right. `container-type:
+  // size` apparently doesn't reliably treat the auto-stretch result as the definite size to
+  // contain at every DPR, the same class of "stretched auto isn't definite enough" gap Dialog's
+  // own `.content` fix (Dialog/AGENTS.md) hit for percentage heights — happening one layer deeper
+  // here. Pulling the size from the inherited custom property instead of the stretch algorithm
+  // sidesteps the question of whether that result counts as definite, the same way `.dialog`
+  // itself avoids asking the ICB anything post-`scrollbar-gutter`.
+  width: 'var(--lightbox-vw, 100%)',
+  height: 'var(--lightbox-vh, 100%)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

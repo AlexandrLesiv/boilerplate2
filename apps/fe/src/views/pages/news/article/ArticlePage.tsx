@@ -2,13 +2,16 @@ import type { Component } from 'solid-js';
 import { createSignal, For, Show } from 'solid-js';
 
 import { Title } from '@solidjs/meta';
-import { A, createAsync, revalidate, useParams } from '@solidjs/router';
+import { createAsync, revalidate, useParams } from '@solidjs/router';
 
-import { format, useI18n } from '@/common/libs/i18n';
+import { format, localePath, localeFromParams, useI18n } from '@/common/libs/i18n';
+import { JsonLd } from '@/common/libs/seo/JsonLd';
+import { Breadcrumbs, defineBreadcrumbListSchema } from '@/views/components/Breadcrumbs/Breadcrumbs';
 import { Heading } from '@/views/components/Heading/Heading';
 import { Image } from '@/views/components/Image/Image';
 import { Lightbox } from '@/views/components/Lightbox/Lightbox';
 import type { LightboxItem } from '@/views/components/Lightbox/Lightbox';
+import { Link } from '@/views/components/Link/Link';
 import { Text } from '@/views/components/Text/Text';
 import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
 
@@ -29,8 +32,9 @@ const COVER_IMAGES: CoverImage[] = [
 ];
 
 const ArticlePage: Component = () => {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id: string; locale?: string }>();
   const { t } = useI18n();
+  const locale = () => localeFromParams(params);
   const article = createAsync(() => getArticle({ params: { id: Number(params.id) } }));
   const [activeIndex, setActiveIndex] = createSignal<number | null>(null);
   const coverTriggers = new Map<string | number, HTMLElement>();
@@ -44,14 +48,21 @@ const ArticlePage: Component = () => {
           data: image,
           caption: a().title,
         }));
+        const breadcrumbItems = () => [
+          { label: t().nav.home, href: localePath('/', locale()) },
+          { label: t().nav.news, href: localePath('/news', locale()) },
+          { label: a().title, href: localePath(`/news/${params.id}`, locale()) },
+        ];
         return (
           <div class={styles.container}>
             <Title>{a().title}</Title>
+            <JsonLd schema={defineBreadcrumbListSchema(breadcrumbItems())} />
+            <Breadcrumbs items={breadcrumbItems()} class={styles.breadcrumbs} />
             <Heading as="h1">
               <Show when={a().url} fallback={a().title}>
-                <a href={a().url} target="_blank" rel="noopener noreferrer">
+                <Link href={a().url} target="_blank" rel="noopener noreferrer" external>
                   {a().title}
-                </a>
+                </Link>
               </Show>
             </Heading>
             {/* `content` is placeholder copy the API attaches server-side (StoryEntity.content) —
@@ -86,7 +97,6 @@ const ArticlePage: Component = () => {
               {' · '}
               <span>{format(t().pages.news.comments, { n: a().descendants ?? 0 })}</span>
             </div>
-            <A href="../">{t().pages.article.backToNews}</A>
             <Lightbox
               items={coverItems}
               activeIndex={activeIndex()}

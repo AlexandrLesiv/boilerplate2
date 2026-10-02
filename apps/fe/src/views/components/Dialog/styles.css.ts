@@ -9,6 +9,21 @@ import { DIALOG_TRANSITION_MS as transitionMs } from './constants';
 // Full-screen takeover below `sm` instead of a floating card — see Dialog/AGENTS.md.
 const mobileBreakpoint = belowBreakpoint('sm');
 
+// The pop's pivot point — `50%` (the box's own center) unless `Dialog.tsx` points it at a
+// trigger element's position, in which case it overrides both custom properties with a
+// `calc(50% + <offset>px)` pair. Same "per-instance runtime value as a custom property" pattern
+// `Lightbox` uses for `--lightbox-ratio` — see Dialog/AGENTS.md.
+const originX = 'var(--dialog-origin-x, 50%)';
+const originY = 'var(--dialog-origin-y, 50%)';
+// Much smaller than a typical subtle modal pop on purpose. With the pivot shifted toward a
+// trigger element (see above), the apparent start position is `center + (pivot - center) * (1 -
+// scale)` — at the previous `0.96` that's a ~4% shift, imperceptible regardless of where the
+// pivot sits. At `0.15` it's 85% of the way to the trigger, *and* the box itself starts small
+// enough (≈15% of its settled size) to plausibly be mistaken for the trigger's own footprint —
+// both the position and the size need to read as "this came from the button," not just one.
+// Shared by every transform-origin-affected state below so open and close animations agree.
+const closedScale = 'scale(0.15)';
+
 // `margin: auto` restates the native `dialog:modal` UA default, which the app-wide `* { margin: 0 }`
 // reset (global.css.ts) overrides.
 export const dialog = style({
@@ -25,7 +40,8 @@ export const dialog = style({
   maxWidth: '420px',
   position: 'relative',
   opacity: 0,
-  transform: 'scale(0.96)',
+  transform: closedScale,
+  transformOrigin: `${originX} ${originY}`,
   // `opacity`/`transform` only — no `overlay`/`display` `allow-discrete` transition. An earlier
   // version animated those too, to keep the dialog rendered for the close transition's duration
   // instead of vanishing the instant `close()` runs. That depends on engines deferring the
@@ -52,7 +68,7 @@ export const dialog = style({
     // modal — native `close()` isn't called until this finishes, see Dialog.tsx.
     '&:modal[data-closing="true"]': {
       opacity: 0,
-      transform: 'scale(0.96)',
+      transform: closedScale,
     },
     '&:modal[data-closing="true"]::backdrop': {
       opacity: 0,
@@ -62,7 +78,7 @@ export const dialog = style({
     selectors: {
       '&:modal': {
         opacity: 0,
-        transform: 'scale(0.96)',
+        transform: closedScale,
       },
       '&:modal::backdrop': {
         opacity: 0,

@@ -12,6 +12,12 @@ export const container = style({
   maxWidth: READABLE_MEASURE,
 });
 
+// `Breadcrumbs` carries no margin of its own (see Breadcrumbs/AGENTS.md) — spacing between it and
+// the heading is this page's call, same as `Text`'s own "no margin" convention.
+export const breadcrumbs = style({
+  marginBottom: '1rem',
+});
+
 // `Text` carries no margin by design (see Text/AGENTS.md) — spacing between paragraphs is this
 // container's job, via `gap`, not something to add back onto `Text` itself.
 export const body = style({

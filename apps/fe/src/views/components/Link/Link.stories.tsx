@@ -5,6 +5,7 @@ import { expect } from 'storybook/test';
 
 import type { InteractiveVariant } from '@/assets/styles/interactiveVariants.css';
 
+import { withAppProviders } from '../../../../.storybook/decorators';
 import { Link } from './Link';
 
 const VARIANTS: InteractiveVariant[] = ['link', 'primary', 'secondary', 'ghost'];
@@ -12,6 +13,7 @@ const VARIANTS: InteractiveVariant[] = ['link', 'primary', 'secondary', 'ghost']
 const meta: Meta<typeof Link> = {
   title: 'Components/Link',
   component: Link,
+  decorators: [withAppProviders()],
   parameters: { layout: 'centered', a11y: { test: 'error' } },
   argTypes: {
     variant: { control: 'select', options: ['link', 'primary', 'secondary', 'ghost'] },
@@ -77,5 +79,21 @@ export const ForwardsHtmlAttributes: Story = {
     await expect(link.id).toBe('external-link');
     await expect(link.target).toBe('_blank');
     await expect(link.rel).toBe('noopener noreferrer');
+  },
+};
+
+/** `external` is a separate, explicit prop from `target`/`rel` — the icon and the
+ * "opens in new tab" screen-reader text don't depend on either. See Link/AGENTS.md. */
+export const External: Story = {
+  args: {
+    href: 'https://example.com',
+    target: '_blank',
+    rel: 'noopener noreferrer',
+    external: true,
+    children: 'Visit example.com',
+  },
+  play: async ({ canvas }) => {
+    const link = await canvas.findByRole('link', { name: 'Visit example.com Opens in new tab' });
+    await expect(link.querySelector('svg')).not.toBeNull();
   },
 };

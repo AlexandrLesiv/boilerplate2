@@ -22,7 +22,6 @@
     "article": {
       "notFound": "Article not found",
       "notFoundDescription": "The article you're looking for doesn't exist or has been removed.",
-      "backToNews": "Back to news",
       "imageAlt": "Article illustration"
     },
     "login": {
@@ -109,6 +108,12 @@
     },
     "dialog": {
       "close": "Close"
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb"
+    },
+    "link": {
+      "opensInNewTab": "Opens in new tab"
     },
     "lightbox": {
       "label": "Image viewer",

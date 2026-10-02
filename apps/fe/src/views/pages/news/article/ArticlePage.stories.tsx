@@ -3,7 +3,7 @@ import { articleRoute, type Story as Article } from '@repo/shared';
 import type { HttpResponseResolver } from 'msw';
 import { http, HttpResponse } from 'msw';
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
-import { expect } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 
 import { withPageLayout } from '../../../../../.storybook/decorators';
 import ArticlePage from './ArticlePage';
@@ -89,7 +89,9 @@ export const RetrySucceeds: Story = (() => {
     play: async ({ canvas, userEvent }) => {
       await expect(await canvas.findByText('503')).toBeInTheDocument();
       await userEvent.click(canvas.getByRole('button', { name: 'Try again' }));
-      await expect(await canvas.findByRole('link', { name: 'Back to news' })).toBeInTheDocument();
+      // Scoped to the breadcrumb landmark — `RootLayout`'s own header nav also has a "News" link.
+      const breadcrumb = await canvas.findByRole('navigation', { name: 'Breadcrumb' });
+      await expect(within(breadcrumb).getByRole('link', { name: 'News' })).toBeInTheDocument();
     },
   };
 })();
