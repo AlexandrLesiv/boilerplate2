@@ -2,16 +2,25 @@ import type { Component } from 'solid-js';
 import { createEffect, createSignal, createUniqueId, onCleanup, Show, untrack } from 'solid-js';
 
 import { waitForTransition } from '@/common/libs/dialog/animatedClose';
-import { reducedMotionDurationMs } from '@/common/libs/flip';
 import { useI18n } from '@/common/libs/i18n';
 import { AppButton } from '@/views/components/Button/AppButton';
 import { Heading } from '@/views/components/Heading/Heading';
 
-import { CONTACT_WIDGET_CONTENT_TRANSITION_MS, CONTACT_WIDGET_TRANSITION_MS } from './constants';
+import { CONTACT_WIDGET_TRANSITION_MS } from './constants';
 import { ContactChat } from './ContactChat';
 import * as styles from './styles.css';
 
-const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+interface Size {
+  width: number;
+  height: number;
+}
+
+// `clip-path` that hides everything *except* the bottom-right `closed`-sized region of a box
+// that's `open`-sized — i.e. the portion of the (always full-size) content layer that currently
+// overlaps the trigger's own (still small) visual bounds. See ContactWidget/AGENTS.md ("Clipped
+// to the trigger's own bounds").
+const clipFor = (closed: Size, open: Size): string =>
+  `inset(${open.height - closed.height}px 0px 0px ${open.width - closed.width}px)`;
 
 /**
  * The app's one "ask a question" entry point — a floating action button that grows, itself, into
@@ -33,6 +42,10 @@ export const ContactWidget: Component = () => {
   const titleId = createUniqueId();
   let triggerRef: HTMLButtonElement | undefined;
   let panelRef: HTMLDivElement | undefined;
+  // Measured once per open, reused on close rather than re-measured — the trigger's intrinsic
+  // size and the content layer's natural size don't change within a single open/close cycle.
+  let closedSize: Size | undefined;
+  let openSize: Size | undefined;
 
   // Mirrors `useNativeDialog`'s own open/close effect shape (tracks `open` only, `untrack`s
   // everything else) even though this isn't a native dialog — same reason: `mounted`/the refs
@@ -65,10 +78,25 @@ export const ContactWidget: Component = () => {
           // independently of the trigger's current size. Measuring it is what tells the trigger
           // how big to grow into; see ContactWidget/AGENTS.md.
           const openRect = panelRef.getBoundingClientRect();
+          closedSize = { width: closedRect.width, height: closedRect.height };
+          openSize = { width: openRect.width, height: openRect.height };
+          // `panelContent`'s own base CSS `clip-path` is `inset(0)` — writing the *closed* clip
+          // directly (next line) would itself be a transitionable change from that base value,
+          // which the real target (`inset(0)`, right after) would then retarget away from
+          // almost instantly — confirmed live via `getAnimations()` showing no running
+          // animation at all: the clip never visibly showed the closed state, just snapped
+          // straight to fully revealed. `transition: 'none'` suppresses that one write. See
+          // ContactWidget/AGENTS.md ("Clipped to the trigger's own bounds").
+          const previousClipTransition = panelRef.style.transition;
+          panelRef.style.transition = 'none';
+          panelRef.style.clipPath = clipFor(closedSize, openSize);
+          void panelRef.offsetWidth;
+          panelRef.style.transition = previousClipTransition;
           void triggerRef.offsetWidth;
           triggerRef.style.width = `${openRect.width}px`;
           triggerRef.style.height = `${openRect.height}px`;
           triggerRef.setAttribute('data-open', 'true');
+          panelRef.style.clipPath = 'inset(0)';
           void waitForTransition(triggerRef, CONTACT_WIDGET_TRANSITION_MS).then(() => {
             if (!untrack(open)) return;
             setContentVisible(true);
@@ -78,45 +106,38 @@ export const ContactWidget: Component = () => {
       }
       setContentVisible(false);
       if (!mounted()) return;
-      if (!triggerRef) {
+      if (!triggerRef || !panelRef || !closedSize || !openSize) {
         setMounted(false);
         return;
       }
-      // Give the content's own fade-out a head start *before* shrinking the shell — sequenced,
-      // not concurrent. A fixed, reduced-motion-aware delay rather than `waitForTransition` on
-      // `panelRef`: closing can happen before content ever became visible (mid-grow, still
-      // `opacity: 0`), in which case `setContentVisible(false)` above is a no-op that starts no
-      // transition at all, and waiting for a `transitionend` that will never fire would hang the
-      // close forever. See ContactWidget/AGENTS.md ("Closing is sequenced, not concurrent").
-      void wait(reducedMotionDurationMs(CONTACT_WIDGET_CONTENT_TRANSITION_MS)).then(() => {
+      // Re-measure the natural (`auto`) size to shrink back to — the icon is only hidden via
+      // `opacity`, which doesn't collapse its contribution to intrinsic size, so this still
+      // reads the real closed size even while `data-open` is set. Same clear-measure-restore
+      // technique `morphTo` (since deleted) used to use, see `AGENTS.md`.
+      const openWidth = triggerRef.style.width;
+      const openHeight = triggerRef.style.height;
+      triggerRef.style.width = '';
+      triggerRef.style.height = '';
+      const closedRect = triggerRef.getBoundingClientRect();
+      triggerRef.style.width = openWidth;
+      triggerRef.style.height = openHeight;
+      void triggerRef.offsetWidth;
+      triggerRef.removeAttribute('data-open');
+      triggerRef.style.width = `${closedRect.width}px`;
+      triggerRef.style.height = `${closedRect.height}px`;
+      // `panelContent`'s clip-path is currently `inset(0)` (settled open) — a real, single-write
+      // change toward the closed clip, so no `transition: 'none'` suppression needed here, only
+      // on the open side above (where the *starting* value itself had to be set, not just the
+      // target).
+      panelRef.style.clipPath = clipFor(closedSize, openSize);
+      void waitForTransition(triggerRef, CONTACT_WIDGET_TRANSITION_MS).then(() => {
         if (untrack(open)) return;
-        if (!triggerRef) {
-          setMounted(false);
-          return;
+        if (triggerRef) {
+          triggerRef.style.width = '';
+          triggerRef.style.height = '';
         }
-        // Re-measure the natural (`auto`) size to shrink back to — the icon is only hidden via
-        // `opacity`, which doesn't collapse its contribution to intrinsic size, so this still
-        // reads the real closed size even while `data-open` is set. Same clear-measure-restore
-        // technique `morphTo` used to use, see `AGENTS.md`.
-        const openWidth = triggerRef.style.width;
-        const openHeight = triggerRef.style.height;
-        triggerRef.style.width = '';
-        triggerRef.style.height = '';
-        const closedRect = triggerRef.getBoundingClientRect();
-        triggerRef.style.width = openWidth;
-        triggerRef.style.height = openHeight;
-        void triggerRef.offsetWidth;
-        triggerRef.removeAttribute('data-open');
-        triggerRef.style.width = `${closedRect.width}px`;
-        triggerRef.style.height = `${closedRect.height}px`;
-        void waitForTransition(triggerRef, CONTACT_WIDGET_TRANSITION_MS).then(() => {
-          if (untrack(open)) return;
-          if (triggerRef) {
-            triggerRef.style.width = '';
-            triggerRef.style.height = '';
-          }
-          setMounted(false);
-        });
+        if (panelRef) panelRef.style.clipPath = '';
+        setMounted(false);
       });
     });
   });
@@ -154,6 +175,10 @@ export const ContactWidget: Component = () => {
         aria-label={t().common.contact.triggerLabel}
         onClick={() => setOpen(!open())}
       >
+        {/* Painted before `.triggerContent` in DOM order — `position: relative`/`absolute` on
+        the two siblings makes stacking follow DOM order, so this stays underneath the icon. See
+        ContactWidget/AGENTS.md ("WebKit defers paint transitions bundled with a layout one"). */}
+        <div class={styles.triggerFill} />
         <span class={styles.triggerContent}>
           <svg
             aria-hidden="true"

@@ -9,11 +9,4 @@ const LoginPage = lazyRoute(() => import('./LoginPage'));
 export const loginRoute = defineRoute({
   path: '/login',
   component: LoginPage,
-  info: {
-    meta: (_, t) => ({
-      title: t.pages.login.title,
-      description: t.pages.login.title,
-      robots: 'noindex, nofollow',
-    }),
-  },
 });

@@ -10,6 +10,7 @@
     "news": {
       "title": "Hacker News",
       "description": "Top stories from Hacker News",
+      "descriptionWithCount": "Top {total} stories from Hacker News, ranked by score.",
       "loading": "Loading stories…",
       "score": "{n} points",
       "by": "by {user}",
@@ -21,6 +22,9 @@
       "welcomeUser": "Welcome, {email}!"
     },
     "article": {
+      "title": "Article",
+      "description": "Read the full story and comments on Hacker News.",
+      "metaDescription": "Shared by {by} on Hacker News — {score} points.",
       "notFound": "Article not found",
       "notFoundDescription": "The article you're looking for doesn't exist or has been removed.",
       "imageAlt": "Article illustration"

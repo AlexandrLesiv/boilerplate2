@@ -10,6 +10,7 @@
     "news": {
       "title": "Hacker News",
       "description": "Топ матеріали з Hacker News",
+      "descriptionWithCount": "Топ {total} історій з Hacker News, за рейтингом.",
       "loading": "Завантаження…",
       "score": "{n} балів",
       "by": "автор {user}",
@@ -21,6 +22,9 @@
       "welcomeUser": "Ласкаво просимо, {email}!"
     },
     "article": {
+      "title": "Стаття",
+      "description": "Читайте повну історію та коментарі на Hacker News.",
+      "metaDescription": "Поширено {by} на Hacker News — {score} балів.",
       "notFound": "Статтю не знайдено",
       "notFoundDescription": "Стаття, яку ви шукаєте, не існує або була видалена.",
       "imageAlt": "Ілюстрація до статті"

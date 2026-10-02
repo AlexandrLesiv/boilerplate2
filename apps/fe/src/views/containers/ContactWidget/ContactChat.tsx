@@ -53,6 +53,10 @@ export const ContactChat: Component = () => {
 
   const handleSubmit = (event: SubmitEvent) => {
     event.preventDefault();
+    // The Send button is disabled while `typing()`, but a disabled submit button doesn't stop
+    // the browser's own implicit-submit-on-Enter in the text input from firing this handler
+    // anyway — that goes through the form's `submit` event directly, not a click on the button.
+    if (typing()) return;
     const text = draft().trim();
     if (!text) return;
     logger.event('contact.chat.message', { length: text.length });
@@ -99,7 +103,9 @@ export const ContactChat: Component = () => {
           required
           class={styles.messageInput}
         />
-        <AppButton type="submit">{t().common.contact.sendBtn}</AppButton>
+        <AppButton type="submit" loading={typing()}>
+          {t().common.contact.sendBtn}
+        </AppButton>
       </form>
     </div>
   );

@@ -21,47 +21,99 @@ const mobileBreakpoint = belowBreakpoint('sm');
 // `ContactWidget.tsx` transitions them to the panel content's measured natural size, anchored at
 // this same `bottom`/`right` corner the whole time — since `top`/`left` are never set, growing
 // `width`/`height` necessarily expands the box up and to the left *from* that corner, with no
-// way for it to end up positioned anywhere else. `border` is present and `primary`-colored at
-// every size, including closed — invisible there since it's the same hue as `backgroundColor`,
-// which is what makes it read as "the button's own color" rather than a separate decoration;
-// once `backgroundColor` crossfades to `surface` on open, the same border becomes a visible
-// outline. See ContactWidget/AGENTS.md ("The trigger morphs; nothing new is painted until it's
-// already the right shape").
+// way for it to end up positioned anywhere else.
+//
+// `width`/`height` is the *only* transition declared here, and this element carries no border,
+// background, or border-radius of its own at all — all of that (plus their crossfades) lives on
+// `triggerFill` (below) instead. Confirmed live in Safari/WebKit: when a layout-affecting
+// transition (`width`/`height`) and paint-only transitions (`background-color`, `box-shadow`,
+// `border-radius`) are declared on the *same* element, WebKit defers the paint ones until the
+// layout one finishes, then plays them out afterwards — the box stayed solid blue and square for
+// the entire grow, then "white-and-round-ed-out" only once fully grown, where Chrome/Firefox run
+// all of them concurrently as intended. Moving the paint transitions to a child that has no
+// `width`/`height` of its own (just `inset: 0`, tracking the parent's size as a passive layout
+// consequence rather than its own declared transition) fixes it in WebKit too — confirmed with an
+// isolated test page before changing this file. See ContactWidget/AGENTS.md ("WebKit defers
+// paint transitions bundled with a layout one").
 export const trigger = style({
   position: 'fixed',
   bottom: `calc(1.5rem + ${safeArea.safeAreaBottom})`,
   right: `calc(1.5rem + ${safeArea.safeAreaRight})`,
   zIndex: zIndex.contactWidgetTrigger,
   overflow: 'hidden',
-  // Equal padding on every side, overriding the shared `boxed` look's asymmetric
-  // `0.5rem 1rem` (sized for a text label) — icon-only, so this plus the rounded-square
-  // (not `999px`-pill) `borderRadius` below forms a square, chat-box-like shape rather than a
-  // round FAB — asked for directly: a closed state that already reads as "a small chat box",
-  // not a generic circular button.
+  // Icon spacing only now — the visual shape (border, fill) moved to `triggerFill`. Still needs
+  // *some* `border-radius` of its own, though, even with nothing of its own painted using it:
+  // `overflow: hidden` clips descendants (`triggerFill` included) to *this* element's own
+  // border-radius, and with none declared here the cascade fell through to the shared `boxed`
+  // look's `0.375rem` — visibly clipping `triggerFill`'s own, more generous `1rem` corners down
+  // to that tighter shape. Found live, from the real rendered CSS, not from a screenshot alone:
+  // `triggerFill`'s *own* `getComputedStyle().borderRadius` always correctly reported `1rem`
+  // regardless, since computed style reflects a property's declared value on that element, not
+  // whether an ancestor is clipping it away. Set to `1rem` — the *largest* radius `triggerFill`
+  // ever reaches, not an animated match for its current one — so this clip is never tighter than
+  // whatever shape is currently inside it, at any point in the grow/shrink.
+  borderRadius: '1rem',
   padding: '0.875rem',
-  borderRadius: '0.75rem',
+  // Safari-specific mitigation for animating `width`/`height` directly (the layout-recalc jank
+  // `transform: scale()` was tried, and reverted, to avoid — see git history and the "Tried
+  // `transform`" note in AGENTS.md). Neither eliminates the reflow `width`/`height` inherently
+  // cause — that's unavoidable for a real layout property — but both give Safari more to work
+  // with: `willChange` hints the upcoming change so it isn't discovered mid-frame, and
+  // `contain: 'layout paint'` tells the engine this element's layout/paint can't affect anything
+  // outside its own box, so a resize here never needs to re-check ancestors or siblings. Applied
+  // statically rather than toggled on only while animating (the usual advice, to avoid leaving
+  // an idle compositing layer around) — this element is tiny and always mounted, so the memory
+  // cost of leaving it on is negligible, and it avoids a second piece of JS bookkeeping.
+  willChange: 'width, height',
+  contain: 'layout paint',
+  transition: `width ${CONTACT_WIDGET_TRANSITION_MS}ms ease, height ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
+  '@media': {
+    [mobileBreakpoint]: {
+      bottom: `calc(1rem + ${safeArea.safeAreaBottom})`,
+      right: `calc(1rem + ${safeArea.safeAreaRight})`,
+    },
+    '(prefers-reduced-motion: reduce)': {
+      transitionDuration: '0s',
+    },
+  },
+});
+
+// The entire visual shape — border, radius, fill, shadow — split out from `.trigger` itself
+// purely to dodge the WebKit bug documented on `.trigger` above. `inset: 0` means this element's
+// size is a passive consequence of `.trigger`'s own resize, not a `width`/`height` transition of
+// its own, which is what keeps `border-radius`/`background-color`/`box-shadow` running
+// concurrently with the grow in WebKit instead of deferred until after. Since `.trigger` now has
+// no border of its own, this element's own `inset: 0` border-box sits exactly where `.trigger`'s
+// border used to be — no visual shift from moving it here. `border` stays `primary`-colored at
+// every size, including closed — invisible there since it's the same hue as this element's own
+// `backgroundColor`, which is what makes it read as "the button's own color" rather than a
+// separate decoration; once `backgroundColor` crossfades to `surface` on open (alongside
+// `border-radius` growing from the closed "small chat box" `0.75rem` to the open panel's `1rem` —
+// bigger shape, bigger radius, not a single constant — found live that it mattered: *"Bigger
+// elements should have bigger border radius"*), the same border becomes a visible, increasingly
+// subtle-looking outline. `pointerEvents: 'none'` since it's purely decorative — `.trigger`'s own
+// click handler already covers this whole area regardless.
+export const triggerFill = style({
+  position: 'absolute',
+  inset: 0,
+  pointerEvents: 'none',
   border: `2px solid ${themeVars.color.primary}`,
+  borderRadius: '0.75rem',
   backgroundColor: themeVars.color.primary,
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
   transition: [
-    `width ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
-    `height ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
     `border-radius ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
     `background-color ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
     `box-shadow ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
   ].join(', '),
   selectors: {
-    '&[data-open="true"]': {
+    [`${trigger}[data-open="true"] &`]: {
       borderRadius: '1rem',
       backgroundColor: themeVars.color.surface,
       boxShadow: '0 10px 40px rgba(0, 0, 0, 0.25)',
     },
   },
   '@media': {
-    [mobileBreakpoint]: {
-      bottom: `calc(1rem + ${safeArea.safeAreaBottom})`,
-      right: `calc(1rem + ${safeArea.safeAreaRight})`,
-    },
     '(prefers-reduced-motion: reduce)': {
       transitionDuration: '0s',
     },
@@ -74,7 +126,9 @@ export const trigger = style({
 // this element, since the attribute that drives it (`data-open`) only ever gets set on the
 // button itself. Still a wrapper (not just styling `triggerIcon` directly) in case the icon is
 // ever joined by a visible label again — see git history for the text+icon version this replaced.
+// Painted after `triggerFill` in DOM order so the icon renders on top of it, not underneath.
 export const triggerContent = style({
+  position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
   selectors: {
@@ -105,6 +159,20 @@ export const triggerIcon = style({
 // /`border-radius` still need to match, though, so this element's *own* children (the chat log,
 // bubbles near an edge) get clipped to the same rounded shape `.trigger` clips itself to — they
 // aren't inside `.trigger`, so its own `overflow: hidden` has no effect on them.
+//
+// `clip-path` is the structural fix for content rendering outside `.trigger`'s current (still
+// mid-grow/shrink) bounds — found live from a screenshot showing exactly that, persisting even
+// after sequencing the opacity fade ahead of the shrink (a `setTimeout`/CSS-transition pair
+// isn't guaranteed to resolve in the same tick). This element's own size is always its full
+// natural size (380×~384), never animated — only the *visible* region of it is, via
+// `clip-path: inset(...)`, computed in `ContactWidget.tsx` from the same measured rects that
+// drive `.trigger`'s own `width`/`height`, transitioning over the same
+// `CONTACT_WIDGET_TRANSITION_MS` so the clipped region and `.trigger`'s visual box move in
+// lockstep by construction — there's no separate timer that could drift out of sync. `opacity`
+// stays on its own, shorter, independent timeline — it's not what prevents the overflow
+// (clip-path is), it's what avoids revealing a half-clipped, jumbled partial view of real chat
+// UI while the clip region is still widening/narrowing. See ContactWidget/AGENTS.md ("Clipped to
+// the trigger's own bounds, not just timed around them").
 export const panelContent = style({
   position: 'fixed',
   bottom: `calc(1.5rem + ${safeArea.safeAreaBottom})`,
@@ -121,7 +189,11 @@ export const panelContent = style({
   padding: '1.25rem',
   color: themeVars.color.text,
   opacity: 0,
-  transition: `opacity ${CONTACT_WIDGET_CONTENT_TRANSITION_MS}ms ease`,
+  clipPath: 'inset(0)',
+  transition: [
+    `opacity ${CONTACT_WIDGET_CONTENT_TRANSITION_MS}ms ease`,
+    `clip-path ${CONTACT_WIDGET_TRANSITION_MS}ms ease`,
+  ].join(', '),
   selectors: {
     '&[data-visible="true"]': {
       opacity: 1,

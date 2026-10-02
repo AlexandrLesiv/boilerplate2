@@ -23,6 +23,15 @@ export const interactiveBase = style({
       opacity: 0.5,
       cursor: 'not-allowed',
     },
+    // `AppButton`'s own `loading` prop sets `disabled` (so the action genuinely can't be
+    // re-triggered) *and* `aria-busy` — this overrides the plain `:disabled` dimming for that
+    // specific case, since a temporarily-busy action reads as "in progress," not "unavailable,"
+    // and a half-opacity spinner is harder to see than it needs to be. Higher specificity than
+    // `&:disabled` alone (two conditions, not one) wins regardless of declaration order.
+    '&:disabled[aria-busy="true"]': {
+      opacity: 1,
+      cursor: 'wait',
+    },
   },
 });
 

@@ -2,7 +2,13 @@ import { createContext, useContext } from 'solid-js';
 
 import { query, createAsync } from '@solidjs/router';
 
-import en from './locales/en.json';
+// Type-only: derives `Translations`' shape from the JSON file without a runtime import, so `en`
+// loads the same way `ua`/`ru` do below instead of always sitting in the eager bundle. A
+// server-only variant (gating a real, static `import en from './locales/en.json'` behind
+// `import.meta.env.SSR`) was tried and reverted — confirmed by inspecting the built client chunk
+// that the import still gets inlined eagerly; Rolldown doesn't drop a static JSON import just
+// because its only reference sits in a dead branch.
+import type en from './locales/en.json';
 
 export type Translations = typeof en;
 export { format } from './format';
@@ -34,7 +40,7 @@ const BCP47_ALIAS: Record<Locale, string> = Object.fromEntries(
 export const bcp47Alias = (lang: Locale): string => BCP47_ALIAS[lang];
 
 const localeLoaders: Record<Locale, () => Promise<Translations>> = {
-  en: async () => en,
+  en: () => import('./locales/en.json').then((m) => m.default as Translations),
   ua: () => import('./locales/ua.json').then((m) => m.default as Translations),
   ru: () => import('./locales/ru.json').then((m) => m.default as Translations),
 };
@@ -52,11 +58,29 @@ export const stripLocale = (pathname: string, locale: string | undefined): strin
 export const localePath = (path: string, locale: Locale): string =>
   locale === DEFAULT_LOCALE ? path : `/${locale}${path === '/' ? '' : path}`;
 
+/**
+ * Stands in for `Translations` before any locale has actually resolved. Solid's SSR
+ * `createResource` doesn't suspend-by-throw on a pending read — it synchronously returns
+ * `initialValue` while `<Suspense>` separately defers *flushing* the render, so every `t()` call
+ * needs some real, non-crashing value on that first, later-discarded pass.
+ *
+ * A self-referencing `Proxy` answers any property access or call with itself (same trick
+ * `vite-plugins/strip-typebox.ts` uses for its no-op `Type`), and only produces a real value — an
+ * empty string — once something actually coerces it to one (template interpolation, `setAttribute`,
+ * `String()`, `.replace()` inside `format()`). Until then, `t().anything.as.deep.as.you.like` just
+ * keeps returning the same proxy, so it never throws regardless of `Translations`' actual shape —
+ * there's nothing here to keep in sync when a locale file gains a new key.
+ */
+const blankTranslations: Translations = new Proxy((() => '') as unknown as Translations, {
+  get: () => blankTranslations,
+  apply: () => '',
+});
+
 export const createI18nStore = (getLocale: () => Locale) => {
-  const translations = createAsync(() => loadLocale(getLocale()), { initialValue: en });
+  const translations = createAsync(() => loadLocale(getLocale()), { initialValue: blankTranslations });
   return {
     locale: getLocale,
-    t: () => translations() ?? en,
+    t: () => translations(),
   };
 };
 

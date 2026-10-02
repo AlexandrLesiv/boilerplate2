@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 
+import { query } from '@solidjs/router';
+
 import { dbAppend, dbClear, dbRead, dbTrim } from './db';
 import type { LogCategory, LogEntry, Logger, LogLevel } from './types';
 
@@ -53,6 +55,28 @@ const randomUUID = (): string => {
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
+/**
+ * `query()`'s fetcher runs once, server-side, during SSR — Node's `crypto.randomUUID()` has no
+ * secure-context restriction, so the browser never has to call the gated version at all. The
+ * resolved id is serialised into the hydration payload and replayed on the client, same mechanism
+ * `common/libs/i18n`'s `loadLocale` and `common/libs/config`'s `getClientConfig` already rely on.
+ * `randomUUID()` (not a bare `crypto.randomUUID()`) is still the fetcher body on purpose: it's the
+ * same safe-everywhere helper above, in case this ever did run client-side (a revalidate, or a
+ * context with no SSR at all), rather than assuming the fetcher only ever runs on the server.
+ */
+export const getSessionId = query(async () => randomUUID(), 'logger:sessionId');
+
+/**
+ * Called once the router-level `createAsync(() => getSessionId())` resolves (see `RootLayout.tsx`
+ * — this module itself can't call `createAsync` directly, since it's constructed from
+ * `AppProvider`, which sits above the router and has no router context yet). `push()` reads
+ * `sessionId` as a plain variable at call time, not reactively, so overwriting it here is enough —
+ * log entries before this runs keep the bootstrap id `createLogger` assigned below.
+ */
+export const setSessionId = (id: string): void => {
+  sessionId = id;
 };
 
 const flush = async (): Promise<void> => {

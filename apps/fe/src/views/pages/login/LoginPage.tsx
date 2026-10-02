@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js';
 
+import { Meta, Title } from '@solidjs/meta';
 import { useNavigate } from '@solidjs/router';
 
 import { useI18n } from '@/common/libs/i18n';
@@ -21,6 +22,9 @@ const LoginPage: Component = () => {
 
   return (
     <div class={styles.container}>
+      <Title>{t().pages.login.title}</Title>
+      <Meta name="description" content={t().pages.login.title} />
+      <Meta name="robots" content="noindex, nofollow" />
       <Heading as="h1" class={styles.title}>
         {t().pages.login.title}
       </Heading>

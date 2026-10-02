@@ -96,22 +96,45 @@ export default defineConfig(async ({ mode }) => {
     },
     build: {
       sourcemap: analyze,
-      rolldownOptions: {
-        output: {
-          // Without this, anything reachable from *both* the eager entry graph and a lazy
-          // `lazy(() => import(...))` route (most of solid-js core, `Text`, `Heading`,
-          // `DataBoundary`, `ErrorState`) gets automatically factored into its own "shared"
-          // chunk — but since `entry-client` itself already statically imports that chunk, it
-          // was never actually deferred; it's just a second HTTP request for code that always
-          // loads anyway. Folding it into `entry-client` removes that request for free, with no
-          // duplication, since this is the *only* place that code is used. Modules with zero
-          // static importers (only `dynamicImporters`) are left alone — those are the actual
-          // lazy-route targets (`NewsPage.tsx`, `ArticlePage.tsx`, `LoginPage.tsx`) and should
-          // stay deferred, not get swept in because something else happens to also import them.
-          manualChunks(id, { getModuleInfo }) {
-            const info = getModuleInfo(id);
-            if (info && info.importers.length === 0 && info.dynamicImporters.length > 0) return undefined;
-            return 'entry-client';
+    },
+    environments: {
+      // Splitting lazy routes/locales into their own chunks only pays off where code actually
+      // ships over a network — the server reads everything off local disk, so chunking there is
+      // pure overhead (more files, no benefit). `codeSplitting: false` merges every
+      // `lazy()`/dynamic `import()` target straight into the one SSR entry file (Rolldown's
+      // replacement for Rollup's `inlineDynamicImports`, which it also accepts but warns is
+      // deprecated here). Scoped to this environment specifically: Rolldown ignores `manualChunks`
+      // wherever `codeSplitting` is also set, so `client`'s own chunking (below) has to live in
+      // its own environment override rather than the old shared `build` key both used to share.
+      ssr: {
+        build: {
+          rolldownOptions: {
+            output: {
+              codeSplitting: false,
+            },
+          },
+        },
+      },
+      client: {
+        build: {
+          rolldownOptions: {
+            output: {
+              // Without this, anything reachable from *both* the eager entry graph and a lazy
+              // `lazy(() => import(...))` route (most of solid-js core, `Text`, `Heading`,
+              // `DataBoundary`, `ErrorState`) gets automatically factored into its own "shared"
+              // chunk — but since `entry-client` itself already statically imports that chunk, it
+              // was never actually deferred; it's just a second HTTP request for code that always
+              // loads anyway. Folding it into `entry-client` removes that request for free, with no
+              // duplication, since this is the *only* place that code is used. Modules with zero
+              // static importers (only `dynamicImporters`) are left alone — those are the actual
+              // lazy-route targets (`NewsPage.tsx`, `ArticlePage.tsx`, `LoginPage.tsx`) and should
+              // stay deferred, not get swept in because something else happens to also import them.
+              manualChunks(id, { getModuleInfo }) {
+                const info = getModuleInfo(id);
+                if (info && info.importers.length === 0 && info.dynamicImporters.length > 0) return undefined;
+                return 'entry-client';
+              },
+            },
           },
         },
       },

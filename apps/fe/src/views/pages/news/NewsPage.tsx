@@ -1,10 +1,11 @@
 import type { Component } from 'solid-js';
 import { For } from 'solid-js';
 
+import { Meta, Title } from '@solidjs/meta';
 import { A, createAsync, revalidate, useParams } from '@solidjs/router';
 
 import { format, localePath, localeFromParams, useI18n } from '@/common/libs/i18n';
-import { JsonLd } from '@/common/libs/seo/JsonLd';
+import { defineJsonLd, JsonLd } from '@/common/libs/seo/JsonLd';
 import { Breadcrumbs, defineBreadcrumbListSchema } from '@/views/components/Breadcrumbs/Breadcrumbs';
 import { Heading } from '@/views/components/Heading/Heading';
 import { Link } from '@/views/components/Link/Link';
@@ -27,8 +28,24 @@ const NewsPage: Component = () => {
     { label: t().nav.news, href: localePath('/news', locale()) },
   ];
 
+  // One reactive element, not a generic one plus a data-driven override — `@solidjs/meta` only
+  // dedupes repeated `<meta>` tags when every tracked prop (including `content`) matches, so two
+  // differently-worded description tags don't collapse into one and both end up in the document;
+  // confirmed live in the built SSR output (see ArticlePage.tsx, which hit the same bug first).
+  const description = () => {
+    const result = response();
+    return result?.ok
+      ? format(t().pages.news.descriptionWithCount, { total: result.data.meta.total })
+      : t().pages.news.description;
+  };
+
   return (
     <div>
+      <Title>{t().pages.news.title}</Title>
+      <Meta name="description" content={description()} />
+      <JsonLd
+        schema={defineJsonLd({ '@type': 'CollectionPage', name: t().pages.news.title, description: description() })}
+      />
       <JsonLd schema={defineBreadcrumbListSchema(breadcrumbItems())} />
       <Breadcrumbs items={breadcrumbItems()} class={styles.breadcrumbs} />
       <Heading as="h1">{t().pages.news.title}</Heading>

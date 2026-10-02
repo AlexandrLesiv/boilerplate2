@@ -1,4 +1,4 @@
-import { defineJsonLd, defineRoute, lazyRoute } from '@/common/libs/router';
+import { defineRoute, lazyRoute } from '@/common/libs/router';
 
 import { getArticle } from '../api';
 
@@ -15,12 +15,4 @@ export const articlePageRoute = defineRoute({
   // it with a 400. Non-numeric ids now fall through to the catch-all 404 instead.
   matchFilters: { id: /^\d+$/ },
   preload: ({ params }) => void getArticle({ params: { id: Number(params.id) } }),
-  info: {
-    meta: (_, t) => ({
-      title: t.pages.news.title,
-      description: t.pages.news.description,
-      robots: 'noindex',
-      schema: defineJsonLd({ '@type': 'NewsArticle', isPartOf: { '@type': 'WebSite' } }),
-    }),
-  },
 });

@@ -1,33 +1,13 @@
 import type { Component } from 'solid-js';
 import { lazy } from 'solid-js';
 
-import type { Params, RouteDefinition } from '@solidjs/router';
+import type { RouteDefinition } from '@solidjs/router';
 
-import type { Translations } from '../i18n';
-import type { JsonLdSchema } from '../seo/JsonLd';
-
-export type { JsonLdSchema } from '../seo/JsonLd';
-export { defineJsonLd } from '../seo/JsonLd';
-
-export type RouteMeta = {
-  title: string;
-  description?: string;
-  robots?: string;
-  /** A path (e.g. `/news/123`), not a full URL — `RootLayout` passes it through `absoluteUrl`. */
-  canonical?: string;
-  schema?: JsonLdSchema | JsonLdSchema[];
-};
-
-export type AppRouteInfo<TData = undefined> = {
-  load?: (params: Params) => Promise<TData> | TData;
-  meta: (data: TData, t: Translations) => RouteMeta;
-};
-
-export function defineRoute<TData = undefined>(
-  config: Omit<RouteDefinition, 'info' | 'children'> & {
-    info?: AppRouteInfo<TData>;
-    children?: RouteDefinition[];
-  }
+// Meta/structured-data is set by each page component directly (`<Title>`/`<Meta>`/`<JsonLd>`,
+// from `@solidjs/meta` and `common/libs/seo/JsonLd`) rather than declared here — a route is just
+// path + component + data preloading; it doesn't need its own meta sub-type.
+export function defineRoute(
+  config: Omit<RouteDefinition, 'children'> & { children?: RouteDefinition[] }
 ): RouteDefinition {
   return config as RouteDefinition;
 }

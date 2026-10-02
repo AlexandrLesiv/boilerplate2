@@ -4,9 +4,10 @@
 // content box" morph, not a small UI-chrome fade.
 export const CONTACT_WIDGET_TRANSITION_MS = 200;
 
-// The chat content's own fade duration — shorter than, and *sequenced before*, the shell's own
-// `CONTACT_WIDGET_TRANSITION_MS` shrink on close (see ContactWidget.tsx). Running both
-// concurrently from different durations left a visible window where the shell had already
-// shrunk smaller than the still-substantially-opaque content sitting on top of it — found live,
-// not guessed. See ContactWidget/AGENTS.md.
+// The chat content's own fade (opacity only) duration — independent of, and shorter than,
+// `CONTACT_WIDGET_TRANSITION_MS`, which drives both the shell's `width`/`height` and the
+// content's `clip-path` in lockstep. This one isn't load-bearing for the "content visible
+// outside the shrinking box" fix (clip-path is, see ContactWidget/AGENTS.md) — it's purely the
+// polish that avoids revealing a half-clipped, jumbled partial view of real chat UI while the
+// clip region is still widening/narrowing.
 export const CONTACT_WIDGET_CONTENT_TRANSITION_MS = 150;

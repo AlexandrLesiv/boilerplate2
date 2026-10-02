@@ -1,8 +1,8 @@
 import type { Component, ParentProps } from 'solid-js';
 import { For, Show, Suspense, createEffect } from 'solid-js';
 
-import { Link, Meta, Title } from '@solidjs/meta';
-import { A, useCurrentMatches, useLocation, useParams } from '@solidjs/router';
+import { Link, Meta } from '@solidjs/meta';
+import { createAsync, useLocation, useParams } from '@solidjs/router';
 
 import { absoluteUrl } from '@/common/constants/environment';
 import { ConfigContext, createConfigStore } from '@/common/libs/config';
@@ -16,11 +16,10 @@ import {
   stripLocale,
 } from '@/common/libs/i18n';
 import type { Locale } from '@/common/libs/i18n';
-import type { AppRouteInfo } from '@/common/libs/router';
-import { JsonLd } from '@/common/libs/seo/JsonLd';
+import { getSessionId, setSessionId } from '@/common/libs/logger';
 
+import { HeaderNav } from '../components/HeaderNav/HeaderNav';
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
-import { MobileNav } from '../components/MobileNav/MobileNav';
 import { SkipLinks } from '../components/SkipLinks/SkipLinks';
 import { RouteErrorBoundary } from '../containers/ErrorBoundaries/RouteErrorBoundary';
 import { LoginDialog } from '../containers/LoginDialog/LoginDialog';
@@ -30,7 +29,6 @@ import * as styles from './styles.css';
 const RootLayout: Component<ParentProps> = (props) => {
   const params = useParams<{ locale?: string }>();
   const location = useLocation();
-  const matches = useCurrentMatches();
   const locale = () => localeFromParams(params);
   createEffect(() => {
     document.documentElement.lang = bcp47Alias(locale());
@@ -38,19 +36,21 @@ const RootLayout: Component<ParentProps> = (props) => {
   const i18n = createI18nStore(locale);
   // Not in AppProvider: createAsync needs router context and AppProvider sits above the router.
   const config = createConfigStore();
+  // Same reason `config`/`i18n` live here instead of `AppProvider`. `createLogger()` (called from
+  // `AppProvider`) already assigns a client-generated bootstrap id for the handful of log lines
+  // that fire before this resolves; this overwrites it with the server-issued one, which is also
+  // known server-side — see `common/libs/logger`'s `getSessionId`/`setSessionId`.
+  const sessionId = createAsync(() => getSessionId());
+  createEffect(() => {
+    const id = sessionId();
+    if (id) setSessionId(id);
+  });
   // Reads the store directly: this component provides ConfigContext, so it cannot consume it.
   const features = () => config.config().features;
-  const pfx = () => (params.locale ? `/${params.locale}` : '');
 
   const pagePath = () => stripLocale(location.pathname, params.locale);
 
   const alternateHref = (target: Locale) => localePath(pagePath(), target);
-
-  const routeMeta = () => {
-    const match = matches().findLast((m) => m.route.info?.meta);
-    const info = match?.route.info as AppRouteInfo<undefined> | undefined;
-    return info ? info.meta(undefined, i18n.t()) : null;
-  };
 
   return (
     <ConfigContext.Provider value={config}>
@@ -68,20 +68,7 @@ const RootLayout: Component<ParentProps> = (props) => {
           {(entry) => <Link rel="alternate" hreflang={entry.alias} href={absoluteUrl(alternateHref(entry.lang))} />}
         </For>
         <Link rel="alternate" hreflang="x-default" href={absoluteUrl(pagePath())} />
-
-        <Suspense>
-          <Show when={routeMeta()?.title}>
-            <Title>{routeMeta()!.title}</Title>
-          </Show>
-          <Show when={routeMeta()?.description}>
-            <Meta name="description" content={routeMeta()!.description!} />
-          </Show>
-          <Show when={routeMeta()?.robots}>
-            <Meta name="robots" content={routeMeta()!.robots!} />
-          </Show>
-          <Link rel="canonical" href={absoluteUrl(routeMeta()?.canonical ?? pagePath())} />
-          <Show when={routeMeta()?.schema}>{(schema) => <JsonLd schema={schema()} />}</Show>
-        </Suspense>
+        <Link rel="canonical" href={absoluteUrl(pagePath())} />
 
         {/* Required: Suspense waits on loading resources even when they have an initialValue.
             Without it the nav's t() renders once server-side as the en default. */}
@@ -89,17 +76,7 @@ const RootLayout: Component<ParentProps> = (props) => {
           <div>
             <SkipLinks />
             <header class={styles.header}>
-              <div class={styles.headerLeft}>
-                <strong class={styles.brand}>SolidJS App</strong>
-                <MobileNav label={i18n.t().nav.menuLabel}>
-                  <A href={pfx() || '/'} end class={styles.navLink}>
-                    {i18n.t().nav.home}
-                  </A>
-                  <A href={`${pfx()}/news`} class={styles.navLink}>
-                    {i18n.t().nav.news}
-                  </A>
-                </MobileNav>
-              </div>
+              <HeaderNav />
               <div class={styles.headerRight}>
                 <Show when={features().localeSwitcher}>
                   <LocaleSwitcher />
