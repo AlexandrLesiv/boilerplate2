@@ -84,15 +84,36 @@ export const flipFrom = (element: HTMLElement, fromRect: FlipRect, options: Flip
 
 /** Animates `element`, at its current position/size, shrinking into `toRect`. Resolves once the animation has finished playing. */
 export const flipTo = (element: HTMLElement, toRect: FlipRect, options: FlipOptions): Promise<void> => {
-  // Measures `element`'s true, untransformed layout rect — not whatever `getBoundingClientRect()`
-  // would report right now. If an open animation is still mid-flight when this is called
-  // (pressing close before it finishes), `getBoundingClientRect()` reflects the current,
-  // transient *painted* size, not the real settled one, which would compute a wrong shrink
-  // target. Clearing `transform`, measuring, then restoring whatever it was, all synchronously
-  // before any paint happens, gets the correct answer with no visible flicker.
-  const previousTransform = element.style.transform;
-  element.style.transform = 'none';
-  const naturalRect = element.getBoundingClientRect();
-  element.style.transform = previousTransform;
+  // Derives the true, untransformed layout rect from the *computed* matrix, not by writing
+  // `element.style.transform = 'none'` and reading `getBoundingClientRect()` back (a previous
+  // version of this function did exactly that). That trick depends on the write actually
+  // *changing* the specified value to force a resync — but if an open FLIP is still mid-flight
+  // when this runs (pressing close before it finishes), `element.style.transform` already reads
+  // `'none'`, because that's `flipFrom`'s own *target* string, not its current animated value.
+  // Writing the same string again is a no-op the browser doesn't act on, so the following
+  // `getBoundingClientRect()` kept reporting the current *mid-transition* size — confirmed live:
+  // logging `getComputedStyle().transform` immediately before and after the "clear" showed the
+  // identical matrix both times. The resulting shrink target was computed from that wrong size,
+  // which is what made closing mid-open visibly keep growing instead of reversing.
+  // `getComputedStyle` always reflects the live animated value, transition or not, so computing
+  // the natural rect by dividing it back out sidesteps the whole "did my write actually take"
+  // question. Uniform scale only (see `invert`'s own comment) — `a`/`d` are always equal, and
+  // `translate(...)  scale(...)` composes as `M = Translate(e,f) · Scale(a)`, so the painted
+  // center is `naturalCenter + (e, f)` regardless of scale, letting the center and size be
+  // recovered independently.
+  const computed = getComputedStyle(element).transform;
+  const matrix = computed === 'none' ? null : new DOMMatrixReadOnly(computed);
+  const scale = matrix?.a ?? 1;
+  const paintedRect = element.getBoundingClientRect();
+  const naturalWidth = paintedRect.width / scale;
+  const naturalHeight = paintedRect.height / scale;
+  const naturalCenterX = paintedRect.left + paintedRect.width / 2 - (matrix?.e ?? 0);
+  const naturalCenterY = paintedRect.top + paintedRect.height / 2 - (matrix?.f ?? 0);
+  const naturalRect: FlipRect = {
+    width: naturalWidth,
+    height: naturalHeight,
+    left: naturalCenterX - naturalWidth / 2,
+    top: naturalCenterY - naturalHeight / 2,
+  };
   return transitionTo(element, invert(toRect, naturalRect), options.durationMs, options.easing ?? DEFAULT_EASING);
 };

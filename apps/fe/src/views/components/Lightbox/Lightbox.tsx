@@ -109,35 +109,22 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
         if (targetIndex === null) return mutate();
         logger.event('lightbox.open', { index: targetIndex, total: total() });
         const targetId = props.items[targetIndex].id;
-        const triggerRect = props.getTriggerElement?.(targetId)?.getBoundingClientRect();
         const dialogEl = element();
         if (dialogEl) setViewportVars(dialogEl);
         setLastIndex(targetIndex);
         mutate();
-        if (triggerRect) {
-          // Deferred to a frame, not a microtask: `mutate()`'s `setMounted(true)` doesn't commit
-          // the content div to the DOM synchronously (same reason Dialog defers `showModal()` —
-          // see Dialog/AGENTS.md), and a plain `queueMicrotask` races Solid's own internal
-          // reactive flush — confirmed live as real, intermittent flakiness: whichever
-          // microtask happened to be scheduled first won, so `contentRef` was sometimes not
-          // laid out yet when measured, producing a `scale(Infinity)` the browser silently
-          // drops, which looks like "no animation, jumps straight to the end state."
-          // `requestAnimationFrame` only fires after the browser has committed layout for the
-          // current frame — a strictly stronger guarantee than any microtask ordering.
-          requestAnimationFrame(() => {
-            if (!contentRef) return;
-            // Re-measured here, not the `triggerRect` captured above — reported live as a small
-            // but real leftover offset, reproducible only when the trigger started partially
-            // outside the viewport: a newly-`:focus`ed partially-visible element can get
-            // scrolled (fully) into view by the browser's own default focus handling, between
-            // the pre-`mutate()` capture above and this frame. Re-reading right before the FLIP
-            // math runs keeps it correct regardless of whether that happened, the same
-            // staleness-avoidance principle as `setViewportVars`.
-            const freshTriggerRect = props.getTriggerElement?.(targetId)?.getBoundingClientRect() ?? triggerRect;
-            setContentRatio(freshTriggerRect);
-            void flipFrom(contentRef, freshTriggerRect, { durationMs: LIGHTBOX_TRANSITION_MS });
-          });
-        }
+        // Measured once, inside this frame — not before `mutate()` above. `mutate()`'s
+        // `setMounted(true)` doesn't commit the content div synchronously (same reason Dialog
+        // defers `showModal()`, see Dialog/AGENTS.md), so this has to wait a frame regardless; a
+        // *second*, earlier measurement would only risk going stale before use — e.g. the
+        // browser scrolling a partially-visible trigger into view on focus — for no benefit.
+        requestAnimationFrame(() => {
+          if (!contentRef) return;
+          const triggerRect = props.getTriggerElement?.(targetId)?.getBoundingClientRect();
+          if (!triggerRect) return;
+          setContentRatio(triggerRect);
+          void flipFrom(contentRef, triggerRect, { durationMs: LIGHTBOX_TRANSITION_MS });
+        });
         return;
       }
       // Guards against the hook's own mount-time effect run, which always takes this branch once
@@ -157,9 +144,6 @@ export const Lightbox = <T,>(props: LightboxProps<T>): JSX.Element => {
       const triggerRect = props.getTriggerElement?.(activeItem().id)?.getBoundingClientRect();
       const extra: Promise<void>[] = [];
       if (contentRef && triggerRect) {
-        // Re-asserted here, not just relied on from open/navigate — this is the ratio `flipTo`
-        // measures `contentRef`'s *current* box against a moment from now, so it has to be
-        // correct for the item actually being closed, not whatever the last navigate left behind.
         setContentRatio(triggerRect);
         extra.push(flipTo(contentRef, triggerRect, { durationMs: LIGHTBOX_TRANSITION_MS }));
       }

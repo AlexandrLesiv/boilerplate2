@@ -51,13 +51,38 @@ export const useNativeDialog = (props: UseNativeDialogOptions): NativeDialogHand
         runTransition(() => {
           setMounted(true);
           queueMicrotask(() => {
-            if (ref && !ref.open) ref.showModal();
+            if (!ref) return;
+            // Mirrors the close path's own `props.open()` re-check below — this microtask was
+            // queued when `open` was `true`, but by the time it actually runs the user may have
+            // closed again (rapid open/close, especially on mobile where a tap can register
+            // before the previous one's microtask has even flushed). `ref.open` alone can't tell
+            // the difference: `showModal()` hasn't run yet either way, so `!ref.open` is true
+            // whether the user still wants it open or already changed their mind. Without this,
+            // `showModal()` fired anyway — reported live as the dialog popping back open on its
+            // own right after being closed, with `mounted` left stuck `true` forever afterward
+            // since neither branch here nor the close branch above ever got a chance to set it
+            // back to `false` (the close branch had already bailed out on `!ref.open` too, for
+            // the identical reason).
+            if (!untrack(() => props.open())) {
+              setMounted(false);
+              return;
+            }
+            if (!ref.open) ref.showModal();
           });
         });
         return;
       }
       runTransition(() => {
         if (!ref || !ref.open) return;
+        // Guards against a reopen that happened *during* this close animation — this `mutate`
+        // was deferred until the close animation's own promises settled (`runAnimatedClose`),
+        // and if the user reopened in that window, `props.open()` is `true` again by the time it
+        // fires. Without this, `ref.close()` would yank the dialog shut out from under whatever
+        // the reopen already showed. Reported live: rapidly closing then immediately reopening
+        // left the dialog looking reopened for a moment, then it closed itself on its own a
+        // couple hundred ms later with no further input — the original close's deferred callback,
+        // still pending, firing late.
+        if (untrack(() => props.open())) return;
         ref.close();
         // `{ subtree: true }` — without it, `getAnimations()` only sees animations whose target
         // is `ref` itself, never a descendant like Lightbox's `contentRef` FLIP. Plain `Dialog`

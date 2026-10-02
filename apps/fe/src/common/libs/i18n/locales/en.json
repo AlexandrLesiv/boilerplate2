@@ -3,7 +3,8 @@
     "home": "Home",
     "news": "News",
     "login": "Login",
-    "logout": "Log out"
+    "logout": "Log out",
+    "menuLabel": "Menu"
   },
   "pages": {
     "news": {
@@ -111,6 +112,21 @@
     },
     "breadcrumbs": {
       "label": "Breadcrumb"
+    },
+    "contact": {
+      "triggerLabel": "Ask a question",
+      "dialogTitle": "Chat with us",
+      "greeting": "Hi! How can we help you today?",
+      "inputLabel": "Message",
+      "placeholder": "Type your message…",
+      "sendBtn": "Send",
+      "typingIndicator": "Agent is typing…",
+      "logLabel": "Chat messages",
+      "commonReplies": [
+        "Thanks for reaching out! Someone from our team will follow up shortly.",
+        "Got it — we'll look into that and get back to you soon.",
+        "Thanks for your message! We'll have an answer for you shortly."
+      ]
     },
     "link": {
       "opensInNewTab": "Opens in new tab"

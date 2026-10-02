@@ -9,6 +9,7 @@ import pkg from './package.json';
 import { defineClientConfiguration } from './vite-plugins/define-client-configuration.ts';
 import { htmlValidatePlugin } from './vite-plugins/html-validate.ts';
 import { serviceWorkerPlugin } from './vite-plugins/service-worker.ts';
+import { stripDevToolbarPlugin } from './vite-plugins/strip-dev-toolbar.ts';
 import { stripTypeboxPlugin } from './vite-plugins/strip-typebox.ts';
 import { validateEnvPlugin } from './vite-plugins/validate-env.ts';
 import { versionedClientOutputPlugin } from './vite-plugins/versioned-client-output.ts';
@@ -71,6 +72,7 @@ export default defineConfig(async ({ mode }) => {
       ...solidStart({ ssr: true, devOverlay: false, middleware: './src/middleware.ts' }),
       htmlValidatePlugin(),
       serviceWorkerPlugin(),
+      stripDevToolbarPlugin(),
       stripTypeboxPlugin(),
       validateEnvPlugin(),
       defineClientConfiguration({

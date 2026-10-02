@@ -20,6 +20,7 @@ import type { AppRouteInfo } from '@/common/libs/router';
 import { JsonLd } from '@/common/libs/seo/JsonLd';
 
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
+import { MobileNav } from '../components/MobileNav/MobileNav';
 import { SkipLinks } from '../components/SkipLinks/SkipLinks';
 import { LoginDialog } from '../containers/LoginDialog/LoginDialog';
 import { OfflineStatus } from '../containers/OfflineStatus/OfflineStatus';
@@ -84,19 +85,19 @@ const RootLayout: Component<ParentProps> = (props) => {
         {/* Required: Suspense waits on loading resources even when they have an initialValue.
             Without it the nav's t() renders once server-side as the en default. */}
         <Suspense>
-          <div class={styles.appShell}>
+          <div>
             <SkipLinks />
             <header class={styles.header}>
               <div class={styles.headerLeft}>
-                <strong>SolidJS App</strong>
-                <nav class={styles.nav}>
+                <strong class={styles.brand}>SolidJS App</strong>
+                <MobileNav label={i18n.t().nav.menuLabel}>
                   <A href={pfx() || '/'} end class={styles.navLink}>
                     {i18n.t().nav.home}
                   </A>
                   <A href={`${pfx()}/news`} class={styles.navLink}>
                     {i18n.t().nav.news}
                   </A>
-                </nav>
+                </MobileNav>
               </div>
               <div class={styles.headerRight}>
                 <Show when={features().localeSwitcher}>

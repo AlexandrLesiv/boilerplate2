@@ -1,6 +1,5 @@
-import { composeStyles, style, styleVariants } from '@vanilla-extract/css';
+import { style, styleVariants } from '@vanilla-extract/css';
 
-import { styleContainer } from './mixins.css';
 import { themeVars } from './themes.css';
 
 // Shared between `AppButton` (a real `<button>`) and `Link` (a real `<a>`) — the visual look
@@ -8,28 +7,24 @@ import { themeVars } from './themes.css';
 // can wear either look: a `<button>` that reads as a plain inline link (a "Cancel" action sitting
 // in a sentence, not a boxed CTA), or an `<a>` that reads as a button (a prominent link action).
 // Neither component owns this module; both just consume it. See Link/AGENTS.md.
-export const interactiveBase = composeStyles(
-  styleContainer({
-    display: 'inline-flex',
-    cursor: 'pointer',
-    userSelect: 'none',
-    alignItems: 'center',
-    textAlign: 'center',
-    position: 'relative',
-    margin: 'none',
-  }),
-  style({
-    border: 'none',
-    fontSize: themeVars.typography.fontSizeNormal,
-    transition: 'background-color 150ms, color 150ms, opacity 150ms, text-decoration-color 150ms',
-    selectors: {
-      '&:disabled': {
-        opacity: 0.5,
-        cursor: 'not-allowed',
-      },
+export const interactiveBase = style({
+  display: 'inline-flex',
+  cursor: 'pointer',
+  userSelect: 'none',
+  alignItems: 'center',
+  textAlign: 'center',
+  position: 'relative',
+  margin: 0,
+  border: 'none',
+  fontSize: themeVars.typography.fontSizeNormal,
+  transition: 'background-color 150ms, color 150ms, opacity 150ms, text-decoration-color 150ms',
+  selectors: {
+    '&:disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
     },
-  })
-);
+  },
+});
 
 const boxed = {
   padding: '0.5rem 1rem',
