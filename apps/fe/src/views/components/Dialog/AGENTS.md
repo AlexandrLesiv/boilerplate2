@@ -69,6 +69,25 @@ the `showModal()` call in `queueMicrotask` lets Solid's update commit first, so 
 native fallback focus (no explicit `autofocus` anywhere) lands on the real first field. Don't
 "simplify" this back to an inline call — the close button silently wins again with no error.
 
+**That same deferred microtask needs its own `props.open()` re-check — reported live as "rapidly
+opening and closing causes problems on mobile."** The close path already re-checks `props.open()`
+before calling `ref.close()` (see "Every dismissal path..." below) specifically to guard against a
+reopen landing *during* the close animation's wait. The open path had the identical class of race
+with no guard at all: if the user closes again before the queued `showModal()` microtask runs,
+`ref.open` is still `false` either way (showModal hasn't fired yet, regardless of what the user
+currently wants), so `if (ref && !ref.open) ref.showModal()` can't tell "still wants it open" apart
+from "changed their mind" — it just opens it anyway. Confirmed by deliberately removing the guard
+and reproducing live: dispatching an open-click and a close-click synchronously in the same script
+(a real pair of sequential Playwright `.click()` calls can't reliably land inside this window —
+each one alone already crosses enough task/microtask boundaries) left the dialog's `open`
+attribute `true` ~600ms later despite the close, with `LoginForm`'s email input stuck mounted
+forever — neither this branch nor the close branch had ever gotten a chance to call
+`setMounted(false)`, since the close branch's own `!ref.open` check had *also* bailed out for the
+same reason. Fixed symmetrically: the microtask now checks `untrack(() => props.open())` first,
+calling `setMounted(false)` and bailing if the user closed again in the meantime, rather than
+calling `showModal()` against a stale intent. Re-ran the identical reproduction after the fix:
+`open` attribute stays `false`, email input stays unmounted.
+
 ## Every dismissal path calls `props.onClose()` — none of them call `ref.close()` directly
 
 This inverts an earlier design, documented below for why it had to change. Escape, the close
@@ -127,13 +146,65 @@ because Solid's compiler only defers JSX evaluation for control-flow components 
 doesn't get that treatment retroactively. Every caller passes `{() => <Content/>}`, not
 `<Content/>` directly.
 
-## Mobile: full-screen takeover below `sm`
+## Mobile: a bottom sheet below `sm`
 
-Below the `sm` breakpoint (576px, the same scale `mixins.css.ts` uses elsewhere), the dialog fills
-the viewport (`inset: 0`, no `border-radius`, safe-area-aware padding) instead of floating as a
-centered card — a phone-width card leaves too little room for content, and a full-screen sheet is
-the standard mobile pattern. This only changes the dialog's own box; focus trap, `::backdrop`,
-Escape, and the open/close mechanism are all unchanged, since none of that is tied to viewport size.
+Below the `sm` breakpoint (576px, the same scale `mixins.css.ts` uses elsewhere), the dialog
+renders as a bottom sheet — full width, capped at 85% viewport height, rounded top corners —
+instead of floating as a centered card. A phone-width floating card leaves too little room for
+content, but a literal full-screen takeover (tried first, see below) turned out to have its own
+problems; a sheet that leaves backdrop-dimmed page visible above it is both the more standard
+mobile pattern and the one that actually animates correctly. This only changes the dialog's own
+box; focus trap, `::backdrop`, Escape, and the open/close mechanism are all unchanged, since none
+of that is tied to viewport size.
+
+### Getting a bottom-anchored box to actually animate: two rejected geometries, and why
+
+The obvious way to anchor a box to the bottom of the viewport is `position: absolute; top: auto;
+bottom: 0`, sized by content via `height: auto` plus a `max-height` cap. That geometry is
+*correct* — verified live, its settled position and size were always right — but the open/close
+`transform` transition on it never actually painted any motion. Confirmed three separate ways, not
+assumed: `getComputedStyle(dialogEl).transform` showed a smoothly interpolating matrix across
+animation frames (the engine's own transition model was doing real work); `dialogEl.getAnimations()`
+reported a genuinely running 150ms animation; and yet `getBoundingClientRect()` read the *settled*
+position at every sampled point, including the very first frame, and — more decisively — real
+screenshots taken through a deliberately slowed-down (3s) transition showed the sheet sitting
+frozen in its final spot the entire time, with only `::backdrop`'s independent fade visibly
+progressing. Whatever the exact engine mechanism, animating `transform` on a `position: absolute`,
+*bottom*-anchored (not top-anchored) box promoted to the top layer by `showModal()` does not
+reliably paint on Chromium.
+
+The second attempt tried to dodge that by keeping the *animated* element in the one geometry
+already proven to animate (`.dialog` itself, `inset: 0`, full viewport, exactly the pre-existing
+full-screen takeover) and achieving the bottom-sheet *look* with a separate child — `.dialog`
+turned fully transparent and became a `display: flex; justify-content: flex-end` container, with
+a new `.sheet` child (the real background/shadow/rounded-corners box) pushed to its bottom edge.
+Also confirmed broken, the same three ways: the animated `transform`/`opacity` lived on `.dialog`
+and demonstrably interpolated in computed style, but `.sheet` — the only element actually
+visible — rendered at full opacity and its final position from the very first frame regardless.
+Animating an invisible top-layer ancestor does not reliably repaint a visible descendant either.
+
+**What actually works:** keep `.dialog` itself as the one real, visible, animated box (same
+`inset: 0` geometry the original full-screen version used, confirmed to animate correctly), and
+get the bottom-anchored *look* via `margin-top: auto` instead of `top: auto; bottom: 0` —
+`inset: 0` still gives top *and* bottom both `0` (satisfying whatever the engine needs to paint the
+transition correctly), `height: auto` plus `max-height: 85vh` caps the box short of the full
+stretch, and the leftover space above it is absorbed by the auto top margin, pushing the
+(correctly-sized) box down to the bottom of the viewport — the classic CSS auto-margin trick for
+absolutely/fixed-positioned boxes, applied to a case that happens to also need to stay in the one
+proven-animatable positioning shape. Confirmed via the same three checks: computed `transform`
+interpolates, and this time real screenshots (both forced-transparent and with the real
+`opacity: 1` mobile default) show the sheet visibly rising into place across a slowed-down
+transition, not frozen.
+
+**A verification lesson worth keeping in mind for any future animated top-layer work:**
+`getBoundingClientRect()` was the *wrong* tool here — it agreed with reality for the desktop
+`scale()` case and for this final geometry's first couple of layout passes, but reported stale,
+settled values throughout an actively-animating `transform` on both rejected geometries, for
+reasons that were never fully pinned down (plausibly a layout-vs-paint timing quirk specific to
+top-layer elements). `getComputedStyle().transform` sampled every `requestAnimationFrame` is
+reliable; raw `getBoundingClientRect()` numbers sampled the same way are not — confirm with an
+actual screenshot (ideally through an artificially slowed transition, so screenshot-timing
+precision stops mattering) before trusting either signal alone.
 
 The breakpoint is computed as a plain `575px` string via `belowBreakpoint('sm')`
 (`assets/styles/responsive/breakpoints.ts`), not `calc(${responsiveBreakPoints.sm} - 1px)` —
@@ -142,23 +213,41 @@ build-time error: "Invalid media query"), even though a real browser accepts it 
 stylesheet. Do the arithmetic in JS before interpolating, here and anywhere else a breakpoint needs
 an exclusive upper bound — `belowBreakpoint` exists so that isn't reimplemented per call site.
 
-### The rest of the page is hidden, not just inert, on mobile
+### Tried and removed: hiding the app shell behind the mobile takeover
 
 A native `<dialog>` only makes the rest of the page *inert* (unclickable/untabbable) — it does not
-hide it. That's invisible to the user normally, because the desktop card + backdrop already covers
-everything. Once the dialog becomes a full-screen takeover on mobile, the backdrop *is* the dialog's
-own box, so without an extra step the app shell would still be sitting there, rendered, underneath.
+hide it. An earlier version of this component had `RootLayout`'s root div carry an `appShell`
+class (`views/layouts/styles.css.ts`) that set `visibility: hidden` on itself, below `sm`,
+whenever it `:has(dialog[open])` anywhere in its subtree — on the reasoning that without an extra
+step, the app shell would still be sitting there, rendered, underneath the full-screen takeover.
+`display: none` on that same ancestor was tried first and rejected: verified live that hiding an
+ancestor with `display: none` stops box generation for a descendant entirely, even one promoted to
+the top layer by `showModal()`, taking the dialog down with it. `visibility: hidden` doesn't have
+that failure mode (it's inherited *and* overridable), which is why it got chosen — but it
+introduced its own two bugs, both found live, not hypothetical, as the mobile open animation
+changed shape over the course of this work:
 
-`RootLayout`'s root div carries an `appShell` class (`views/layouts/styles.css.ts`) that sets
-`visibility: hidden` on itself, below `sm`, whenever it `:has(dialog[open])` anywhere in its
-subtree. The obvious alternative — `display: none` on that same ancestor — was tried and rejected:
-verified live that hiding an ancestor with `display: none` stops box generation for a descendant
-entirely, even one promoted to the top layer by `showModal()`, taking the dialog down with it.
-`visibility: hidden` doesn't have that failure mode, because unlike `display` it's inherited *and*
-overridable — which is why `Dialog`'s own class (`styles.css.ts`) sets `visibility: visible`
-unconditionally, reasserting itself against whatever an ancestor decided. Any future full-screen
-overlay built the same way needs the same pair: the ancestor hides itself via `:has()`, the overlay
-opts back in.
+1. **Hiding too early.** `:has(dialog[open])` matches the instant `showModal()` sets the `open`
+   attribute — synchronous with the click, well before the opening transition has visually
+   finished covering the screen. With the slide-up transform (see "Mobile uses a slide" below),
+   the sheet starts fully *below* the viewport, so for the first chunk of the animation the
+   background vanished to a bare `::backdrop` with nothing else on screen, then the sheet slid up
+   over it.
+2. **Fixing (1) with a delay surfaced a second bug.** Delaying the hide (a `transition-delay`
+   matched to the slower of `Dialog`/`Lightbox`'s own transition durations) meant the background
+   now stayed visible for the whole opening animation, as intended — which then revealed that the
+   dialog's own `opacity` fade let the still-translucent, still-sliding sheet show that now-visible
+   background straight through it, reading as page content "flying" behind the popup.
+
+(2) was fixed by making the mobile dialog opaque throughout (see "Mobile dialog stays opaque"
+below) — and once that landed, hiding the app shell turned out to be unnecessary in the first
+place: the dialog's own box is `inset: 0`/opaque and `::backdrop` unconditionally covers the full
+viewport regardless of the dialog box's own size, so nothing underneath is ever actually visible
+without this rule. Removed entirely, along with the now-pointless `visibility: 'visible'`
+override `Dialog`'s own class carried specifically to counter it. If a future full-screen overlay
+built the same way turns out to need this after all, reach for the delay-plus-opaque combination
+above rather than the hide-immediately version this section describes — that's the one that
+doesn't have either bug.
 
 ### `inset: 0` alone doesn't fill the viewport on `dialog:modal` — two separate UA defaults fight it
 
@@ -384,6 +473,72 @@ box, not the real `window.innerWidth` the component reads) — so `Dialog.storie
 `OpenedFromTrigger` and `LoginDialog.stories.tsx`'s `OpensAnchoredToTrigger` can only exercise the
 mobile-skip branch inside that tool, and assert accordingly. The anchor-engaged branch is verified
 by the Playwright probe above, not by anything that runs as part of `pnpm check` or the story suite.
+
+## Mobile uses a slide, not a scale
+
+The open/close transform on desktop (`closedScale`, `scale(0.15)`) and on mobile used to be the
+same value — a floating card growing from 15% of its size reads fine when there's page content
+around it to grow *out of*, but once the box covers most of the screen, a huge rectangle
+ballooning out of a tiny dot at its own center has nothing surrounding it to read the "grow from a
+point" cue against; it just looks like a glitch. Below `sm` the closed transform is
+`translateY(100vh)` instead — the sheet slides up from fully below itself, the conventional
+bottom-sheet entrance (iOS/Android sheets, GOV.UK's own mobile nav patterns).
+
+`vh`, not `%`: `translateY(<percent>)` resolves against the element's *own* computed height,
+which here is content-driven (`height: auto` + `max-height`), not fixed — carried over from an
+earlier debugging pass where a percentage transform genuinely failed to animate for a
+content-sized, bottom-anchored box (see "Getting a bottom-anchored box to actually animate"
+above). `100vh` sidesteps that dependency entirely, resolving from the viewport instead of the
+element's own (possibly-not-yet-settled) box, and was kept through the geometry change that
+followed rather than re-tested against a literal percentage in the final shape.
+
+Both breakpoints' `:modal` (settled, open) state stays a bare `scale(1)` — not changed to
+`translateY(0)` for mobile — because `scale(1)` **is** the identity matrix, numerically
+identical to `translateY(0)`; one end-state value works regardless of which function produced the
+closed state. Confirmed live, not assumed from reading the CSS: `getComputedStyle(dialogEl).transform`
+settles to `matrix(1, 0, 0, 1, 0, 0)` at both 390px and 1280px once open.
+
+**How the single breakpoint switch reaches every closed-state selector.** All three "closed"
+spots (the base rule, `&:modal[data-closing="true"]`, and `@starting-style`'s `&:modal`) read
+`transform: var(--dialog-closed-transform)` rather than a literal value; the base rule sets that
+variable to `scale(0.15)` and the existing `[mobileBreakpoint]` block overrides it to
+`translateY(100vh)` — one override point instead of four literal values that could drift out of
+sync. Nesting `vars` inside an `@media` block, and nesting `@starting-style` inside one elsewhere
+in this same file, aren't things this codebase had done before; confirmed supported by reading the
+installed `@vanilla-extract/css` type definitions (`AllQueries` is mutually recursive with
+`StartingStyle`/`MediaQueries`/`vars`-bearing `CSSPropertiesWithVars`) before relying on it, then
+confirmed live via `getComputedStyle(dialogEl).getPropertyValue('--dialog-closed-transform')`
+reporting `translateY(100vh)` at 390px and `scale(.15)` at 1280px for the identical story.
+
+`transformOrigin` (the anchor-pivot custom properties above) is irrelevant to a pure `translate` —
+origin only affects `scale`/`rotate`. No conflict: `applyAnchorOrigin` (Dialog.tsx) already skips
+setting those properties below `sm` for its own, unrelated reason, so they're already unset
+(falling back to the inert `50% 50%` default) everywhere this slide applies.
+
+### Mobile dialog stays opaque — no fade, only the slide
+
+Found immediately after fixing the background-hiding delay above, not independently: once the
+background was correctly left visible until the opening animation finishes, the dialog's own
+`opacity` fade (shared with desktop — `0` → `1` over the same transition) became visible as a
+problem in its own right. A translucent sheet, mid-slide, with the real page now intentionally
+still showing behind it, reads as the page's own content "flying" behind the popup — reported
+live, not hypothetical. A floating desktop card fading in makes sense (it's arriving on top of a
+page that was always visible); a full-screen sheet sliding into place from off-screen doesn't need
+that same cue, and actively hurts once there's something real behind it for translucency to reveal.
+
+Fixed the same way as the transform: `opacity` reads `var(--dialog-closed-opacity)` in every
+"closed" state instead of a literal `0`, defaulting to `0` (desktop still fades) and overridden to
+`1` inside `[mobileBreakpoint]` (mobile never fades — the only thing animating is the slide).
+Verified live via Playwright, sampling `getComputedStyle(dialogEl).opacity` through an open click:
+desktop goes `0` → `0.18` (mid-transition) → `1`; mobile reads `1` at every sampled point,
+including the instant after the click.
+
+**Residual, smaller gap, not fixed:** `::backdrop` still fades in over the same duration,
+independent of this change. For the sliver of viewport the rising sheet hasn't reached yet, that
+means a *brief*, partially-faded dark overlay over the real page rather than an instantly-opaque
+one — much less noticeable than the dialog's own fade was (it's a dimming overlay, not a view
+straight through to raw content, and shrinks to nothing as the sheet finishes rising), but not
+literally zero. Revisit if it turns out to need the same treatment.
 
 ## What this doesn't handle
 

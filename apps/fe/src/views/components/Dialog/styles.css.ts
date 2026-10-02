@@ -6,7 +6,7 @@ import { themeVars } from '@/assets/styles/themes.css';
 
 import { DIALOG_TRANSITION_MS as transitionMs } from './constants';
 
-// Full-screen takeover below `sm` instead of a floating card — see Dialog/AGENTS.md.
+// A bottom sheet below `sm` instead of a floating card — see Dialog/AGENTS.md.
 const mobileBreakpoint = belowBreakpoint('sm');
 
 // The pop's pivot point — `50%` (the box's own center) unless `Dialog.tsx` points it at a
@@ -21,15 +21,23 @@ const originY = 'var(--dialog-origin-y, 50%)';
 // pivot sits. At `0.15` it's 85% of the way to the trigger, *and* the box itself starts small
 // enough (≈15% of its settled size) to plausibly be mistaken for the trigger's own footprint —
 // both the position and the size need to read as "this came from the button," not just one.
-// Shared by every transform-origin-affected state below so open and close animations agree.
 const closedScale = 'scale(0.15)';
+// Every "closed" state (base, `@starting-style`, `[data-closing]`) reads this variable rather
+// than `closedScale` directly, so the single mobile media-query override below (`translateY`
+// instead of `scale`) automatically applies everywhere a closed transform is used, instead of
+// needing four separate copies kept in sync. The settled `:modal` state stays a bare `scale(1)`
+// on both desktop and mobile — that's just the identity matrix, numerically identical to
+// `translateY(0)`, so one end-state value works for either starting transform. See
+// Dialog/AGENTS.md ("Mobile uses a slide, not a scale").
+const closedTransform = 'var(--dialog-closed-transform)';
+// Same "read through a variable so one mobile override reaches every closed state" shape as
+// `closedTransform` — see Dialog/AGENTS.md ("Mobile dialog stays opaque — no fade, only the
+// slide"). Desktop still fades in from fully transparent; mobile never fades at all.
+const closedOpacity = 'var(--dialog-closed-opacity)';
 
 // `margin: auto` restates the native `dialog:modal` UA default, which the app-wide `* { margin: 0 }`
 // reset (global.css.ts) overrides.
 export const dialog = style({
-  // Overrides the app shell's `visibility: hidden` below `sm` (layouts/styles.css.ts). See
-  // Dialog/AGENTS.md ("mobile: full-screen takeover").
-  visibility: 'visible',
   margin: 'auto',
   border: 'none',
   borderRadius: '0.5rem',
@@ -39,9 +47,13 @@ export const dialog = style({
   width: '90vw',
   maxWidth: '420px',
   position: 'relative',
-  opacity: 0,
-  transform: closedScale,
+  opacity: closedOpacity,
+  transform: closedTransform,
   transformOrigin: `${originX} ${originY}`,
+  vars: {
+    '--dialog-closed-transform': closedScale,
+    '--dialog-closed-opacity': '0',
+  },
   // `opacity`/`transform` only — no `overlay`/`display` `allow-discrete` transition. An earlier
   // version animated those too, to keep the dialog rendered for the close transition's duration
   // instead of vanishing the instant `close()` runs. That depends on engines deferring the
@@ -67,8 +79,8 @@ export const dialog = style({
     // Higher specificity than `&:modal` alone, so the close fade/scale can win while still
     // modal — native `close()` isn't called until this finishes, see Dialog.tsx.
     '&:modal[data-closing="true"]': {
-      opacity: 0,
-      transform: closedScale,
+      opacity: closedOpacity,
+      transform: closedTransform,
     },
     '&:modal[data-closing="true"]::backdrop': {
       opacity: 0,
@@ -77,8 +89,8 @@ export const dialog = style({
   '@starting-style': {
     selectors: {
       '&:modal': {
-        opacity: 0,
-        transform: closedScale,
+        opacity: closedOpacity,
+        transform: closedTransform,
       },
       '&:modal::backdrop': {
         opacity: 0,
@@ -105,22 +117,34 @@ export const dialog = style({
     },
     [mobileBreakpoint]: {
       margin: 0,
+      // `marginTop: 'auto'`, not `top: 'auto'` — this box must keep `inset: 0` (top *and* bottom
+      // both `0`) to stay in the one positioning shape that actually animates `transform`
+      // correctly on this element; see Dialog/AGENTS.md ("Getting a bottom-anchored box to
+      // actually animate"). The auto top margin is what pushes a *shorter-than-stretch* box
+      // (capped by `max-height` below) down to the bottom edge instead of letting it stretch.
+      marginTop: 'auto',
       inset: 0,
       width: '100%',
-      right: 'auto',
       height: 'auto',
       maxWidth: 'none',
-      maxHeight: 'none',
+      maxHeight: '85vh',
       borderRadius: 0,
+      borderTopLeftRadius: '1rem',
+      borderTopRightRadius: '1rem',
+      vars: {
+        '--dialog-closed-transform': 'translateY(100vh)',
+        '--dialog-closed-opacity': '1',
+      },
     },
   },
 });
 
 // Padding lives here, not on `.dialog` — a click inside it then always lands on this element (or a
 // descendant), never on `.dialog` itself, which is what keeps `handleBackdropClick` (Dialog.tsx) a
-// plain `event.target === ref` check. `height: '100%'` matters on mobile specifically: without it,
-// a short form wouldn't fill `.dialog`'s full-screen stretch, leaving dead space that's uncovered
-// `.dialog` again. See Dialog/AGENTS.md ("Backdrop click detection").
+// plain `event.target === ref` check. `height: '100%'` fills whatever height `.dialog` itself ends
+// up at — content-sized up to its `max-height` on mobile (see Dialog/AGENTS.md), always
+// `auto`-driven on desktop — so this is what makes `overflowY: 'auto'` below actually able to
+// scroll once content exceeds that cap, rather than just letting `.dialog` grow past it.
 export const content = style({
   height: '100%',
   padding: '1.5rem',

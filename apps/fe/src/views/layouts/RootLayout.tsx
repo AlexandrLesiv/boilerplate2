@@ -22,6 +22,7 @@ import { JsonLd } from '@/common/libs/seo/JsonLd';
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
 import { MobileNav } from '../components/MobileNav/MobileNav';
 import { SkipLinks } from '../components/SkipLinks/SkipLinks';
+import { RouteErrorBoundary } from '../containers/ErrorBoundaries/RouteErrorBoundary';
 import { LoginDialog } from '../containers/LoginDialog/LoginDialog';
 import { OfflineStatus } from '../containers/OfflineStatus/OfflineStatus';
 import * as styles from './styles.css';
@@ -105,10 +106,12 @@ const RootLayout: Component<ParentProps> = (props) => {
                 </Show>
                 <LoginDialog />
               </div>
+              <OfflineStatus />
             </header>
-            <OfflineStatus />
             <main id="main-content" tabindex={-1} class={styles.main}>
-              <Suspense>{props.children}</Suspense>
+              <RouteErrorBoundary>
+                <Suspense>{props.children}</Suspense>
+              </RouteErrorBoundary>
             </main>
           </div>
         </Suspense>

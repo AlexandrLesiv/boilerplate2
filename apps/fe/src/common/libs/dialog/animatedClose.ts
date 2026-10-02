@@ -2,12 +2,15 @@ import { reducedMotionDurationMs } from '@/common/libs/flip';
 
 // Resolves once `element`'s own `transitionend` fires, or immediately under reduced motion. Not
 // filtered by `event.propertyName` — deliberately so. Dialog's `[data-closing]` rule transitions
-// `opacity`+`transform`; Lightbox's transitions `background-color`. Filtering by a specific name
-// means this breaks the moment either stylesheet's transition list changes shape without this
-// being updated to match — exactly the failure mode flagged as a risk in both components' own
-// AGENTS.md before this was unified. Since nothing else on a dialog element transitions while
-// `[data-closing]` is set, the first `transitionend` to fire on it is always the relevant one.
-const waitForTransition = (element: HTMLElement, durationMs: number): Promise<void> =>
+// `opacity`+`transform`; Lightbox's transitions `background-color`; ContactWidget's `[data-open]`
+// rule transitions both. Filtering by a specific name means this breaks the moment any one of
+// those stylesheets' transition lists changes shape without this being updated to match — exactly
+// the failure mode flagged as a risk in each component's own AGENTS.md before this was unified.
+// Safe as long as nothing else on the element transitions at the same time as the attribute-driven
+// rule, which holds for all three callers. Exported for ContactWidget, which drives its own
+// `[data-open]` attribute directly rather than going through `runAnimatedClose` below (that
+// helper's `mutate`/`dialogEl.close()` shape is specific to native `<dialog>`).
+export const waitForTransition = (element: HTMLElement, durationMs: number): Promise<void> =>
   new Promise((resolve) => {
     if (reducedMotionDurationMs(durationMs) === 0) {
       resolve();

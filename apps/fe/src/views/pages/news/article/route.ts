@@ -1,7 +1,12 @@
-import { defineJsonLd, defineRoute } from '@/common/libs/router';
+import { defineJsonLd, defineRoute, lazyRoute } from '@/common/libs/router';
 
 import { getArticle } from '../api';
-import ArticlePage from './ArticlePage';
+
+// Code-split from the main bundle — `../api` (the actual preloaded data fetch, below) is a
+// separate, tiny module, so this doesn't delay `preload`; only the page's own component code
+// loads lazily, on first navigation to `/news/:id`. `lazyRoute`, not solid-js's own `lazy()` —
+// see `common/libs/router`'s `ChunkLoadError` doc comment.
+const ArticlePage = lazyRoute(() => import('./ArticlePage'));
 
 export const articlePageRoute = defineRoute({
   path: '/news/:id',

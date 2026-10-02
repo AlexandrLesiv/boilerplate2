@@ -13,7 +13,7 @@ import { Lightbox } from '@/views/components/Lightbox/Lightbox';
 import type { LightboxItem } from '@/views/components/Lightbox/Lightbox';
 import { Link } from '@/views/components/Link/Link';
 import { Text } from '@/views/components/Text/Text';
-import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
+import { DataBoundary } from '@/views/containers/ErrorBoundaries/DataBoundary';
 
 import { getArticle } from '../api';
 import { FULL_SIZE, THUMBNAIL_SIZE } from './constants';

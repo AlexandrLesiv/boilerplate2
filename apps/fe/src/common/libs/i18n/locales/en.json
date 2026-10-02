@@ -122,6 +122,7 @@
       "sendBtn": "Send",
       "typingIndicator": "Agent is typing…",
       "logLabel": "Chat messages",
+      "close": "Close",
       "commonReplies": [
         "Thanks for reaching out! Someone from our team will follow up shortly.",
         "Got it — we'll look into that and get back to you soon.",

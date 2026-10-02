@@ -9,7 +9,7 @@ import { Breadcrumbs, defineBreadcrumbListSchema } from '@/views/components/Brea
 import { Heading } from '@/views/components/Heading/Heading';
 import { Link } from '@/views/components/Link/Link';
 import { Text } from '@/views/components/Text/Text';
-import { DataBoundary } from '@/views/containers/DataBoundary/DataBoundary';
+import { DataBoundary } from '@/views/containers/ErrorBoundaries/DataBoundary';
 
 import { getTopStories } from './api';
 import * as styles from './styles.css';

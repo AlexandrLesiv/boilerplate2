@@ -1,5 +1,6 @@
 import { ApiError } from '@/common/libs/fetch';
 import type { Translations } from '@/common/libs/i18n';
+import { ChunkLoadError } from '@/common/libs/router';
 
 type ErrorCopy = Translations['pages']['errors'];
 
@@ -65,7 +66,11 @@ export const kindForStatus = (status: number | null, offline?: boolean): ErrorKi
 
 export const errorKindOf = (error: unknown, offline?: boolean): ErrorKind => {
   if (error instanceof ApiError) return kindForStatus(error.status, offline);
-  if (error instanceof TypeError) return noResponseKind(offline);
+  // `ChunkLoadError` wraps a route's own failed `import()` — see its doc comment in
+  // `common/libs/router` for why that can't be a plain `TypeError` check instead. Same "no
+  // response" category as a failed `fetch`: both mean nothing came back, not that something came
+  // back unhappy.
+  if (error instanceof TypeError || error instanceof ChunkLoadError) return noResponseKind(offline);
   return 'unknown';
 };
 

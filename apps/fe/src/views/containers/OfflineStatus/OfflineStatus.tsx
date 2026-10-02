@@ -20,7 +20,7 @@ export const OfflineStatus: Component = () => {
   const { state } = useConnectivity();
 
   return (
-    <div role="status" aria-live="polite">
+    <div role="status" aria-live="polite" class={styles.region}>
       <Switch>
         <Match when={state() === 'offline'}>
           <p class={styles.offline}>{t().common.offline.message}</p>

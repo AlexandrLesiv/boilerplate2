@@ -4,25 +4,16 @@ import { belowBreakpoint } from '@/assets/styles/responsive/breakpoints';
 import * as safeArea from '@/assets/styles/safe-area.css';
 import { themeVars } from '@/assets/styles/themes.css';
 
-// Hides the app shell behind a mobile full-screen dialog — `visibility`, not `display: none`,
-// since the latter would take the top-layer-promoted dialog down with it. See Dialog/AGENTS.md.
-export const appShell = style({
-  '@media': {
-    [belowBreakpoint('sm')]: {
-      selectors: {
-        '&:has(dialog[open])': {
-          visibility: 'hidden',
-        },
-      },
-    },
-  },
-});
-
+// `position: relative` — the containing block both `MobileNav`'s `nav` and `OfflineStatus`
+// position themselves against (`position: absolute; left: 0; right: 0; top: 100%`), so each
+// spans this element's own width and sits flush below it without participating in page flow (no
+// layout shift when either appears — see MobileNav/AGENTS.md and OfflineStatus/AGENTS.md).
 export const header = style({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '1.5rem',
+  position: 'relative',
   paddingTop: `calc(1rem + ${safeArea.safeAreaTop})`,
   paddingRight: `calc(1rem + ${safeArea.safeAreaRight})`,
   paddingBottom: '1rem',
@@ -36,9 +27,16 @@ export const headerLeft = style({
   alignItems: 'center',
 });
 
-export const nav = style({
-  display: 'flex',
-  gap: '1rem',
+// Hidden below `sm`, not moved into `MobileNav`'s panel — a brand name that's only visible after
+// opening the menu doesn't orient anyone; the hamburger button alone is the recognized affordance
+// at this width. Still present (`display: none`, not removed from the DOM) so it's one class to
+// drop, not a conditional render, if a future icon-only logo needs the same treatment.
+export const brand = style({
+  '@media': {
+    [belowBreakpoint('sm')]: {
+      display: 'none',
+    },
+  },
 });
 
 // No min-width: switching locale changes "Home"/"News"' own width, which shifts `headerRight`

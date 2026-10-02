@@ -2,14 +2,11 @@ import type { Component, JSX } from 'solid-js';
 import { createMemo, ErrorBoundary, Match, Suspense, Switch } from 'solid-js';
 
 import type { ApiResult } from '@/common/libs/api';
-import { useI18n } from '@/common/libs/i18n';
-import { useLogger } from '@/common/libs/logger';
 import type { RenderProp } from '@/common/types';
-import { AppButton } from '@/views/components/Button/AppButton';
 import { TimedLoader } from '@/views/components/TimedLoader/TimedLoader';
 
-import { ErrorState } from '../ErrorState/ErrorState';
-import { errorKindOf, isRetryableKind, kindForStatus, type ErrorKind } from '../ErrorState/kinds';
+import { ErrorFallback } from '../ErrorState/ErrorFallback';
+import { errorKindOf, kindForStatus } from '../ErrorState/kinds';
 
 const Pending: Component = () => <TimedLoader />;
 
@@ -41,52 +38,31 @@ export interface DataBoundaryProps<T> {
  * anything rendered in that pass would otherwise leak its status into a successful response.
  */
 export const DataBoundary = <T,>(props: DataBoundaryProps<T>): JSX.Element => {
-  const { t } = useI18n();
-  const logger = useLogger();
   const failure = () => (props.result && !props.result.ok ? props.result : undefined);
   const data = () => (props.result?.ok ? props.result.data : undefined);
 
-  const retryAction = (kind: ErrorKind, retry: () => void) =>
-    props.onRetry && isRetryableKind(kind) ? (
-      <AppButton
-        variant="secondary"
-        onClick={() => {
-          logger.event('data-boundary.retry');
-          retry();
-        }}
-      >
-        {t().pages.errors.retry}
-      </AppButton>
-    ) : undefined;
-
   return (
     <ErrorBoundary
-      fallback={(error, reset) => {
-        const kind = errorKindOf(error);
-        return (
-          <ErrorState
-            kind={kind}
-            keepStatus={props.keepStatus}
-            actions={retryAction(kind, () => {
+      fallback={(error, reset) => (
+        <ErrorFallback
+          kind={errorKindOf(error)}
+          keepStatus={props.keepStatus}
+          onRetry={
+            props.onRetry &&
+            (() => {
               props.onRetry?.();
               reset();
-            })}
-          />
-        );
-      }}
+            })
+          }
+        />
+      )}
     >
       <Suspense fallback={props.pending ?? <Pending />}>
         <Switch fallback={props.pending ?? <Pending />}>
           <Match when={failure()}>
             {(f) => {
               const kind = createMemo(() => kindForStatus(f().status, f().offline));
-              return (
-                <ErrorState
-                  kind={kind()}
-                  keepStatus={props.keepStatus}
-                  actions={retryAction(kind(), () => props.onRetry?.())}
-                />
-              );
+              return <ErrorFallback kind={kind()} keepStatus={props.keepStatus} onRetry={props.onRetry} />;
             }}
           </Match>
           <Match when={props.result?.ok}>{props.children(() => data() as T)}</Match>
