@@ -59,7 +59,7 @@ const AppProviders = (props: { children: JSX.Element; user?: { id: string; email
   const store = createRootStore();
   const initialUser = untrack(() => props.user);
   if (initialUser) store.setUser(initialUser);
-  const logger = createLogger();
+  const logger = createLogger(crypto.randomUUID());
   const connectivity = createConnectivityStore(logger);
 
   return (

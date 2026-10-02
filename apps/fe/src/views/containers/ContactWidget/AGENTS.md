@@ -37,7 +37,19 @@ meaning" split `Link/AGENTS.md` already established — paired with a `visuallyH
 ("Agent is typing…") inside the same `<Show>`, so a screen reader announces the state change via
 the `role="log"` region picking up the new text node, not by trying to describe pulsing circles.
 
-## Not `Dialog` — a non-modal grow, not a centered/full-screen modal
+## Superseded: everything from here through "## Mobile" describes the pre-`<dialog>` design
+
+**This section and the ones through `## Mobile` below are historical, not current behavior.**
+They describe an earlier non-modal version — `.trigger` itself resizing, a `triggerFill`/
+`panelContent` sibling pair, `clip-path`/`clipFor`, no native `<dialog>` at all. That design was
+replaced by a native `<dialog>` (see "Swapping to a native `<dialog>`" below) after direct
+feedback asking for the dialog's own semantics specifically. Kept rather than deleted, same as
+this file's own convention of keeping wrong shapes as a record — but anyone orienting on current
+behavior should skip ahead to "Swapping to a native `<dialog>`".
+
+Historical content, for context on *why* some of the current design looks the way it does (the
+clip/reveal problem in particular rhymes with the old `clip-path` mechanism this section
+describes):
 
 An earlier version opened `Dialog` (via `getAnchorElement`, anchored to the trigger). Replaced
 after direct feedback: the right mental model for a chat-launcher FAB isn't "open a modal," it's
@@ -49,10 +61,6 @@ panel is a plain `role="region"`, toggled by the trigger's `aria-expanded`/`aria
 the same ARIA disclosure shape `MobileNav` already uses, not `Dialog`'s modal one. Escape and
 outside-click close it and return focus to the trigger, mirroring `MobileNav`'s identical pair of
 listeners (re-armed only while open), for the same reasons documented there.
-
-**Not currently rendered by `RootLayout`.** This file documents the component in isolation
-(exercised via its own Storybook stories); wiring it into the live app is a separate decision this
-work didn't make.
 
 ## The trigger morphs; nothing new is painted until it's already the right shape
 
@@ -270,6 +278,153 @@ own resize) was swept up in the same revert and temporarily lost, which is why t
 briefly reappeared even after `transform` was gone — worth remembering if this component's
 history gets rolled back again: clip-path and the trigger's resize mechanism are two separate
 fixes for two separate problems, not one combined unit.
+
+## Swapping to a native `<dialog>`
+
+Replaced the non-modal design above after direct feedback asking specifically for native
+`<dialog>` semantics — *"Can we use native dialog with backdrop for contact widget? ... Use
+native dialog just remember that morphing behavior should remain. It's for semantics"* — i.e. the
+`::backdrop`, focus trap, top-layer promotion, and native Escape-via-`cancel` were the point, not
+a new visual design, and the one hard constraint was that the grow-from-the-corner animation keep
+working exactly as before.
+
+**Two elements now, not one.** `dialogShell` is the `<dialog>` itself (`.showModal()`, not the
+bare `open` attribute, which gives a non-modal dialog with no backdrop/focus-trap/top-layer) —
+it's the thing whose `width`/`height` actually transition, anchored `position: fixed` at the same
+`bottom`/`right` `.trigger` uses, with `top`/`left: auto` (the native `dialog:modal` UA stylesheet
+sets `inset: 0`, and leaving `top`/`left` at their default `0` while only overriding
+`bottom`/`right` is "over-constrained," resolving in `top`/`left`'s favor and anchoring the box at
+the viewport's top-left corner instead — confirmed live before writing the real component).
+`dialogFill` is a normal, statically-sized child (`380px`, matching the panel's natural size) that
+never resizes itself; `dialogShell`'s own `overflow: hidden` reveals more or less of it as it
+grows, replacing what the old `clip-path` trick (see the historical sections above) used to
+simulate for a *sibling* element — unnecessary now that `dialogFill` is a real descendant.
+
+**Three visual bugs found live in this round, all variations of the same root cause**: a border,
+radius, or stroke declared on the *static* `dialogFill` is only ever correct relative to its own
+unmoving rectangle — which, during the grow, essentially never lines up with `dialogShell`'s
+actual (smaller, currently-animating) box on more than one side.
+
+1. **Looked like sliding, not growing.** `dialogFill` sits flush at `dialogShell`'s *moving*
+   top-left corner (the side `top`/`left` recede from as the box grows, since `bottom`/`right` are
+   the fixed anchor). With no `border-radius` on `dialogShell` itself, only the one real rounded
+   corner of `dialogFill` that happened to coincide with that moving point was ever rounded — the
+   other three "corners" of the visible shape were arbitrary clip-cuts through `dialogFill`'s flat
+   interior, with no rounding. Confirmed live via mid-grow screenshots (three sharp corners, one
+   rounded, moving). Fixed with a static, non-transitioning `border-radius: 0.75rem` directly on
+   `dialogShell` — a radius on the box that's actually resizing always traces its current geometry
+   every frame, no transition needed for it to look right at any size.
+2. **Border missing on two sides during the grow.** Same mechanism, for the stroke instead of the
+   corner: `dialogFill`'s real top/left edges always coincide with `dialogShell`'s own (moving)
+   top/left edges, but its real bottom/right edges are 380×388px away from that point — almost
+   always past `dialogShell`'s own (anchor-fixed) bottom/right edges during the grow. So the top
+   and left showed a real 2px border, the bottom and right cut through `dialogFill`'s interior
+   with no stroke at all, until the box reached full size and every edge finally coincided. Fixed
+   the same way as the radius: moved `border` off `dialogFill` and onto `dialogShell`, static, for
+   the same reason.
+3. **Close button popped in before the rest of the content.** `.closeButton` used to be a direct
+   child of `dialogFill`, a sibling of `panelContent` rather than inside it — so it rendered at
+   full opacity from the very first frame while `panelContent` (title, chat) was still `opacity: 0`
+   waiting for the grow to settle. Moved `.closeButton` to be a child of `panelContent` instead, so
+   it shares the exact same opacity curve and fades in with everything else as one reveal.
+   `.closeButton`'s own `position: absolute` still resolves against `dialogFill` (the nearest
+   *positioned* ancestor, not the nearest DOM parent) — moving it inside `panelContent` (which has
+   no `position` of its own) doesn't change where it's actually placed.
+4. **Backdrop snapped straight to full darkness, no fade.** `showModal()` makes the dialog modal
+   and creates `::backdrop` in the same synchronous step — so the pseudo-element's very first
+   style pass already matched `&:modal::backdrop { opacity: 1 }`, with no earlier frame at
+   `opacity: 0` for the declared `transition` to animate away from. `Dialog`'s own backdrop had
+   already solved this with `@starting-style` (see `Dialog/styles.css.ts`) — `dialogShell` was
+   missing the same block. Fixed by adding `@starting-style { selectors: { '&:modal::backdrop':
+   { opacity: 0 } } }`, which is exactly the "what to transition *from*, the first time this
+   starts matching" declaration CSS provides for newly-inserted elements/pseudo-elements.
+   Confirmed live by sampling `getComputedStyle(dialog, '::backdrop').opacity` every 20ms: now a
+   smooth 0 → 1 climb on open and 1 → 0 on close, not an instant jump either direction.
+5. **The trigger icon vanished instantly, with no fade.** Checked live before assuming this was a
+   CSS problem: the icon's own computed `opacity` never left `1` — it wasn't being hidden by any
+   rule at all. `dialogShell`'s top-layer promotion (from `showModal()`) means it renders above
+   `.trigger` from the very first frame, and `dialogFill` is already opaque and the same size as
+   `.trigger` at that instant, so the icon is fully *occluded*, not faded — there is no partially-
+   transparent moment for any opacity transition on `.triggerIcon` to ever be visible through, no
+   matter what CSS is added to it. (The pre-`<dialog>` design made the identical choice
+   deliberately, for a related reason — see "nothing new is painted..." above.) Fixed not by
+   trying to fade the occluded icon, but by drawing the *same* icon again on `dialogFill` itself
+   (`closedIcon`, `styles.css.ts`), positioned at `top`/`left: 0.875rem` to match `.trigger`'s own
+   padding exactly. Because `dialogFill`'s top-left coincides exactly with `.trigger`'s own at the
+   instant `showModal()` runs (both are `closedSize`-sized boxes sharing the same anchor and
+   border width), this icon lands in precisely the spot `.trigger`'s own icon just disappeared
+   from — continuing the morph instead of restarting it — then fades to `opacity: 0` over the same
+   `CONTACT_WIDGET_TRANSITION_MS` as the grow, via an ancestor-state selector
+   (`'[data-open="true"] &'`, since `data-open` is set on `dialogFill`, the icon's parent, not on
+   the icon itself). The SVG markup is shared between `.trigger` and this icon via a small local
+   `AskQuestionIcon` component in `ContactWidget.tsx`, so the two can't drift into drawing
+   different icons. Confirmed live: sampling both rects together through the grow, the icon's
+   offset from `dialogShell`'s own edge stays a constant 16px (`2px` border + `0.875rem` padding)
+   throughout, and its opacity falls smoothly to `0` right as the box finishes settling.
+
+Both `border` and `border-radius` on `dialogShell` are deliberately *not* in its `transition`
+list — WebKit defers paint-only transitions (`border-radius`, `background-color`, `box-shadow`)
+declared on the same element as a layout-affecting one (`width`/`height`) until the layout one
+finishes (see the historical "WebKit defers paint transitions" section above for how that bug was
+originally found). A flat, constant value has nothing to defer — it isn't transitioning, so the
+bug doesn't apply. `dialogFill` keeps its own `background-color`/`box-shadow` crossfade on open
+(it never resizes itself, so it's in no danger of the same bug), but its own `border`/
+`border-radius` were removed once `dialogShell` took over owning them, rather than left in place
+as redundant, coincidentally-overlapping dead styling.
+
+**Initial focus goes to the message input, not the close button.** Native `showModal()`'s own
+focusing steps look for the first descendant with the `autofocus` attribute before falling back to
+"first focusable element in tree order" — without it, that fallback landed on `.closeButton`
+(first focusable element once it was moved inside `panelContent`, itself the first child of
+`dialogFill`), so every open focused "×" instead of the input a user opening a chat panel actually
+wants to type into. Fixed with a plain `autofocus` attribute on `ContactChat`'s message `<input>` —
+works even though `ContactChat` only mounts (via `<Show when={mounted()}>`) in the same tick
+`showModal()` is deferred to the next frame to run in, since Solid's signal updates apply
+synchronously, so the input already exists in the DOM by the time the `requestAnimationFrame`
+callback actually calls `showModal()`.
+
+## Two narrow-viewport overflow bugs, both found below `sm` (576px)
+
+**`dialogFill` was 4px wider than the space `dialogShell` actually had for it.**
+`dialogShell`'s `maxWidth: calc(100vw - 2rem)` is a *border-box* limit, but at the time
+`dialogFill`'s own mobile width calc (`calc(100vw - 2rem - safeAreaLeft - safeAreaRight)`) was
+written, `dialogShell` had no border of its own — true then, stale after `border` moved onto
+`dialogShell` (see above). So at narrow viewports where `maxWidth` actually binds,
+`dialogFill` was exactly `2 * dialogShellBorderWidthPx` (4px) too wide for `dialogShell`'s
+now-smaller *content* box, overflowing into its `overflow: hidden` and clipping whatever sat near
+the right edge (the Send button). Confirmed live at 458px: `dialogShell.clientWidth` (422) vs.
+`dialogFill`'s actual width (426). Fixed by subtracting `2 * dialogShellBorderWidthPx` in
+`dialogFill`'s mobile calc — the constant is shared (not two independent `2px` literals) so the
+two can't drift out of sync again the same way.
+
+**Resizing the viewport *while open*, without closing, reintroduced the same overflow — for a
+different reason.** `dialogFill`'s width is live CSS; it recalculates the instant the viewport
+crosses the breakpoint, or changes at all within the mobile range (its calc reads `100vw`
+directly, not just a breakpoint boolean). `dialogShell`'s width/height, by contrast, are explicit
+inline pixels written once by JS when the dialog opens — nothing re-measures them again after
+that unless told to. Direct feedback: *"the dialog get opened at different width then I resize.
+If I open at that width initially then it works. We probably need [a] window listener for resize
+to track viewport size change."* Confirmed live before fixing: open at 900px (desktop, `380px`
+fill), resize to 470px without closing — `dialogFill` grows to its mobile width (434px) while
+`dialogShell` stays frozen at its desktop size (380px content box), overflowing by 54px.
+
+Fixed with a `window.resize` listener, attached once the open sequence sets its initial target
+and removed once the dialog is fully closed (plus a defensive `onCleanup`, and a
+remove-before-reattach guard against the rare case of reopening before a prior close's own
+cleanup ran — see "Rapid open/close" below). On each resize it re-measures `dialogRef`'s natural
+size the same way the initial open does (clear → read → set, no intermediate step, so there's
+only one real value change for the browser to transition from) and retargets both `dialogRef`'s
+size and `closedSize`.
+
+**Why `window.resize`, not `matchMedia`.** `matchMedia('(max-width: 575px)').addEventListener`'s
+`change` event only fires when that *boolean* flips, i.e. only at the exact moment the viewport
+crosses 576px. `dialogFill`'s mobile width is `calc(100vw - 2rem - ...)` — it changes at *every*
+pixel of resize throughout the entire mobile range, not just at the breakpoint boundary. A resize
+from 500px to 400px (both "mobile") still needs a re-measure, and `matchMedia`'s query never
+changes truth value across that range, so its `change` event would never fire for it.
+`window.resize` is the one event that fires for any geometry change, which is what's actually
+needed — and it's the same tool `Lightbox.tsx` already uses for the identical "recompute geometry
+while open, on any viewport change" need.
 
 ## Rapid open/close
 

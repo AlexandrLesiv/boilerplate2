@@ -2,7 +2,7 @@ import type { Component, ParentProps } from 'solid-js';
 import { For, Show, Suspense, createEffect } from 'solid-js';
 
 import { Link, Meta } from '@solidjs/meta';
-import { createAsync, useLocation, useParams } from '@solidjs/router';
+import { useLocation, useParams } from '@solidjs/router';
 
 import { absoluteUrl } from '@/common/constants/environment';
 import { ConfigContext, createConfigStore } from '@/common/libs/config';
@@ -16,7 +16,6 @@ import {
   stripLocale,
 } from '@/common/libs/i18n';
 import type { Locale } from '@/common/libs/i18n';
-import { getSessionId, setSessionId } from '@/common/libs/logger';
 
 import { HeaderNav } from '../components/HeaderNav/HeaderNav';
 import { LocaleSwitcher } from '../components/LocaleSwitcher/LocaleSwitcher';
@@ -34,17 +33,11 @@ const RootLayout: Component<ParentProps> = (props) => {
     document.documentElement.lang = bcp47Alias(locale());
   });
   const i18n = createI18nStore(locale);
-  // Not in AppProvider: createAsync needs router context and AppProvider sits above the router.
+  // Kept alongside `i18n` for consistency, not because `createConfigStore` itself needs router
+  // context — it doesn't call any router hook, and `createAsync` (which it does use) has no router
+  // dependency at all (verified live; see `AppProvider.tsx`'s own `createAsync` call, which works
+  // fine above the router). `i18n`, above, is the one that actually needs it, via `useParams()`.
   const config = createConfigStore();
-  // Same reason `config`/`i18n` live here instead of `AppProvider`. `createLogger()` (called from
-  // `AppProvider`) already assigns a client-generated bootstrap id for the handful of log lines
-  // that fire before this resolves; this overwrites it with the server-issued one, which is also
-  // known server-side — see `common/libs/logger`'s `getSessionId`/`setSessionId`.
-  const sessionId = createAsync(() => getSessionId());
-  createEffect(() => {
-    const id = sessionId();
-    if (id) setSessionId(id);
-  });
   // Reads the store directly: this component provides ConfigContext, so it cannot consume it.
   const features = () => config.config().features;
 

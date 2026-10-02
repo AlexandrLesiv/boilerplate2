@@ -19,67 +19,53 @@ type Story = StoryObj<typeof ContactWidget>;
 export const Default: Story = {
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Ask a question' });
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument();
     await userEvent.click(trigger);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    await canvas.findByRole('region', { name: 'Chat with us' });
+    await canvas.findByRole('dialog', { name: 'Chat with us' });
     await expect(canvas.getByText('Hi! How can we help you today?')).toBeInTheDocument();
   },
 };
 
-/** Clicking the same button again closes the panel — it's a toggle, not a separate open/close pair. */
-export const ClosesOnReclick: Story = {
-  play: async ({ canvas, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'Ask a question' });
-    await userEvent.click(trigger);
-    await canvas.findByRole('region', { name: 'Chat with us' });
-    await userEvent.click(trigger);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  },
-};
-
 /**
- * The panel's own close button — the real-pointer way to close once open, since the trigger
- * itself is fully covered by the panel's content layer once grown. See ContactWidget/AGENTS.md
- * ("Real-mouse consequence").
+ * The panel's own close button — a native `<dialog>`'s trigger isn't a toggle (clicking it
+ * again while open is a no-op, same as `LoginDialog`'s own trigger), so this is the primary
+ * pointer-driven way to close once open.
  */
 export const ClosesOnCloseButtonClick: Story = {
   play: async ({ canvas, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'Ask a question' });
-    await userEvent.click(trigger);
-    await canvas.findByRole('region', { name: 'Chat with us' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Ask a question' }));
+    await canvas.findByRole('dialog', { name: 'Chat with us' });
     await userEvent.click(canvas.getByRole('button', { name: 'Close' }));
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument();
   },
 };
 
-/** Escape closes the panel and returns focus to the trigger — same contract as `MobileNav`. */
+/** Escape closes the panel and returns focus to the trigger — native `<dialog>` behavior. */
 export const ClosesOnEscape: Story = {
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Ask a question' });
     await userEvent.click(trigger);
-    await canvas.findByRole('region', { name: 'Chat with us' });
+    await canvas.findByRole('dialog', { name: 'Chat with us' });
     await userEvent.keyboard('{Escape}');
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument();
     await expect(trigger).toHaveFocus();
   },
 };
 
-/** Clicking anywhere outside the panel (and outside the trigger itself) closes it. */
-export const ClosesOnOutsideClick: Story = {
+/** Clicking the backdrop (anywhere outside the panel's own content) closes it. */
+export const ClosesOnBackdropClick: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'Ask a question' });
-    await userEvent.click(trigger);
-    await canvas.findByRole('region', { name: 'Chat with us' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Ask a question' }));
+    await canvas.findByRole('dialog', { name: 'Chat with us' });
     await userEvent.click(canvasElement.ownerDocument.body);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument();
   },
 };
 
 export const SendMessageGetsScriptedReply: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Ask a question' }));
-    await canvas.findByRole('region', { name: 'Chat with us' });
+    await canvas.findByRole('dialog', { name: 'Chat with us' });
     await userEvent.type(canvas.getByLabelText('Message'), 'Do you ship internationally?');
     await userEvent.click(canvas.getByRole('button', { name: 'Send' }));
     await expect(canvas.getByText('Do you ship internationally?')).toBeInTheDocument();

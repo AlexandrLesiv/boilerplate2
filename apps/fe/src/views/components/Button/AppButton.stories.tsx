@@ -43,6 +43,16 @@ export const Disabled: Story = {
   args: { variant: 'primary', children: 'Disabled', disabled: true },
 };
 
+/**
+ * For an in-flight action (a submit awaiting a reply, a mutation in flight) — not the same as
+ * `disabled`: `aria-busy` plus a CSS override keep this at full opacity instead of the plain
+ * `:disabled` dimming, so it reads as "in progress" rather than "unavailable". See
+ * `Button/AGENTS.md`.
+ */
+export const Loading: Story = {
+  args: { variant: 'primary', children: 'Sending', loading: true },
+};
+
 /** A real `<button>`, visually indistinguishable from a plain inline link — the `link` variant
  * comes from `assets/styles/interactiveVariants.css.ts`, shared with `Link`, specifically so a
  * `<button>` can wear this look without becoming an `<a>` (a "Cancel" action sitting inside a

@@ -97,6 +97,12 @@ export const ContactChat: Component = () => {
           id={inputId}
           type="text"
           autocomplete="off"
+          // Native <dialog>'s own `showModal()` focusing steps look for the first `autofocus`
+          // descendant before falling back to "first focusable" — without this, that fallback
+          // landed on `.closeButton` (the first focusable element in tree order), so every open
+          // focused "×" instead of the thing a user opening a chat panel actually wants to type
+          // into. See ContactWidget/AGENTS.md.
+          autofocus
           placeholder={t().common.contact.placeholder}
           value={draft()}
           onInput={(event) => setDraft(event.target.value)}

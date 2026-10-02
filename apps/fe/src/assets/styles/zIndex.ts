@@ -9,10 +9,10 @@
  * never need an entry here.
  */
 export const zIndex = {
-  /** `ContactWidget`'s FAB — the lowest fixed-position element in the shell. */
+  /** `ContactWidget`'s FAB — the lowest fixed-position element in the shell. Its own open panel
+   * is a native `<dialog>` (`showModal()`) now, so — like `Dialog`/`Lightbox` — it needs no
+   * entry here; the top layer always wins regardless. */
   contactWidgetTrigger: 10,
-  /** `ContactWidget`'s open panel — above its own trigger so it paints on top once revealed. */
-  contactWidgetPanel: 11,
   /** `MobileNav`'s open panel, absolutely positioned out of `.header`'s flow. */
   mobileNavPanel: 20,
   /** `OfflineStatus`'s banner — above `MobileNav`'s panel: if connectivity changes while the
